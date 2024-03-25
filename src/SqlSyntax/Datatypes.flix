@@ -17,6 +17,9 @@
 mod SqlSyntax.Datatypes {
 
 
+    pub enum Expr with Eq, ToString {
+        case ExprTodo
+    }
 
 
     // Columns and primary keys
@@ -50,7 +53,10 @@ mod SqlSyntax.Datatypes {
         case PrimaryKey
         case AllowNull(Bool)
         case Unique
-        // more
+        case Check(Expr)
+        case Default(Either[Expr, Expr])      // TODO left should be literal
+        case References(String, List[String])
+        case Collate(String)
     }
 
     pub enum SqlType with Eq, ToString {
