@@ -18,14 +18,16 @@ mod SqlSyntax.Pretty {
 
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
-    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, intersperse, comma, space, tupled}
+    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, comma, space, tupled, optionalTupled}
 
-    use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, ColumnSpec, ColumnConstraint, SqlType, QualifiedTableName}
+    use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
+        SqlType, QualifiedTableName}
     use SqlSyntax.Datatypes.Statement.{CreateTable}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.QualifiedTableName.{QualifiedTableName, UnqualifiedTableName}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
-    use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKey, AllowNull, Unique, Check, Default, References, Collate}
+    use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
+    use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
     use SqlSyntax.Datatypes.SqlType.{Varchar, Integer}
 
     pub def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
@@ -39,13 +41,14 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
-        case CreateTableStmt(orRepB, tempB, notExistsB, qname, cols, pks) => 
+        case CreateTableStmt(orRepB, tempB, notExistsB, qname, cols, tblConstrs) => 
             let orReplace = docOrEmpty(orRepB, text("OR REPLACE"));
             let temporary = docOrEmpty(tempB, text("TEMPORARY"));
             let ifNotExists = docOrEmpty(notExistsB, text("IF NOT EXISTS"));
-            let colsD = intersperse(text(", "), List.map(match (n,ty) -> text(n) <<>> ppColumnSpec(ty), cols));
-            let pkD = text("PRIMARY KEY") + parens(intersperse(text(", "), List.map(text, pks)));
-            text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedTableName(qname) <<>> parens(colsD + comma() <<>> pkD) 
+            let colsDs = List.map(match (n,ty) -> text(n) <<>> ppColumnSpec(ty), cols);
+            let tblConstrsD = sep(List.map(ppTableConstraint, tblConstrs));
+            text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedTableName(qname) 
+                <<>> optionalTupled(colsDs ++ List#{tblConstrsD})
     }
 
 
@@ -57,20 +60,30 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppColumnSpec(x: ColumnSpec): Doc = match x {
-        case Column(ty, _constrs) => ppSqlType(ty) <<>> text("TODO")
+        case Column(ty, constrs) => ppSqlType(ty) <^> ppColumnConstraints(constrs)
         case GeneratedColumn(ty, _genAlwaysB) => ppSqlType(ty) <<>> text("TODO")
     }
 
+    pub def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
+        intersperse(space(), List.map(ppColumnConstraint, xs))
 
     pub def ppColumnConstraint(x: ColumnConstraint): Doc = match x {
-        case PrimaryKey             => text("PRIMARY KEY")
-        case AllowNull(b)           => if (b) text("NULL") else text("NOT NULL")
-        case Unique                 => text("UNIQUE")
-        case Check(expr)            => text("CHECK") <<>> parens(ppExpr(expr)) 
-        case Default(Left(lit))     => text("DEFAULT") <<>> ppExpr(lit)
-        case Default(Right(expr))   => text("DEFAULT") <<>> parens(ppExpr(expr))
-        case References(ft, names)  => text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, names))
-        case Collate(cname)         => text("COLLATE") <<>> text(cname)
+        case PrimaryKeyCC               => text("PRIMARY KEY")
+        case AllowNullCC(b)             => if (b) text("NULL") else text("NOT NULL")
+        case UniqueCC                   => text("UNIQUE")
+        case CheckCC(expr)              => text("CHECK") <<>> parens(ppExpr(expr)) 
+        case DefaultCC(Left(lit))       => text("DEFAULT") <<>> ppExpr(lit)
+        case DefaultCC(Right(expr))     => text("DEFAULT") <<>> parens(ppExpr(expr))
+        case ReferencesCC(ft, names)    => text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, names))
+        case CollateCC(cname)           => text("COLLATE") <<>> text(cname)
+    }
+
+    pub def ppTableConstraint(x: TableConstraint): Doc = match x {
+        case PrimaryKeyTC(cols)             => text("PRIMARY KEY") <<>> tupled(List.map(text, cols))
+        case UniqueTC(cols)                 => text("UNIQUE") <<>> tupled(List.map(text, cols))
+        case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpr(expr)) 
+        case ForeignKeyTC(cols, ft, fcols)  => 
+            text("FOREIGN KEY") <<>> tupled(List.map(text, cols)) <<>> text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, fcols))
     }
 
     pub def ppSqlType(x: SqlType): Doc = match x {

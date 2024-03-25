@@ -28,7 +28,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum CreateTableStmt with Eq, ToString {
-        case CreateTableStmt(OrReplaceB, TemporaryB, IfNotExistsB, QualifiedTableName, List[(String, ColumnSpec)], List[String])
+        case CreateTableStmt(OrReplaceB, TemporaryB, IfNotExistsB, QualifiedTableName, List[(String, ColumnSpec)], List[TableConstraint])
     }
 
     pub type alias OrReplaceB = Bool
@@ -50,13 +50,20 @@ mod SqlSyntax.Datatypes {
     pub type alias GeneratedAlwaysB = Bool
 
     pub enum ColumnConstraint with Eq, ToString {
-        case PrimaryKey
-        case AllowNull(Bool)
-        case Unique
-        case Check(Expr)
-        case Default(Either[Expr, Expr])      // TODO left should be literal
-        case References(String, List[String])
-        case Collate(String)
+        case PrimaryKeyCC
+        case AllowNullCC(Bool)
+        case UniqueCC
+        case CheckCC(Expr)
+        case DefaultCC(Either[Expr, Expr])      // TODO left should be literal
+        case ReferencesCC(String, List[String])
+        case CollateCC(String)
+    }
+
+    pub enum TableConstraint with Eq, ToString {
+        case PrimaryKeyTC(List[String])
+        case UniqueTC(List[String])
+        case CheckTC(Expr)
+        case ForeignKeyTC(List[String], String, List[String])
     }
 
     pub enum SqlType with Eq, ToString {
