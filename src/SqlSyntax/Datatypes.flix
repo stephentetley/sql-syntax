@@ -45,6 +45,9 @@ mod SqlSyntax.Datatypes {
     // Columns and primary keys
     pub enum Statement with Eq, ToString {
         case CreateTable(CreateTableStmt)
+        case Drop(DropStmt)
+        case Insert(InsertStmt)
+        case Select(SelectStmt)
     }
 
     pub enum CreateTableStmt with Eq, ToString {
@@ -112,8 +115,10 @@ mod SqlSyntax.Datatypes {
         case ByNameICQ
     }
 
+    // TODO OnConflictClause should be separate
     pub enum InsertValuesClause with Eq, ToString {
         case ValuesIVC(List[List[Expression]], OnConflictClause)
+        case SelectIVC(SelectStmt)
         case DefaultValuesIVC(OnConflictClause)
     }
 
@@ -128,6 +133,14 @@ mod SqlSyntax.Datatypes {
     pub enum DoUpdateOrDoNothing with Eq, ToString {
         case DoUpdate(List[(String, Expression)], Option[Expression])
         case DoNothing
+    }
+
+    pub enum SelectStmt with Eq, ToString {
+        case SelectStmt(SelectClause)
+    }
+
+    pub enum SelectClause with Eq, ToString {
+        case SelectClause
     }
 
     pub enum SqlType with Eq, ToString {

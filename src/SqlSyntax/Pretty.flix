@@ -25,11 +25,12 @@ mod SqlSyntax.Pretty {
         Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
+        SelectStmt, SelectClause, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
     use SqlSyntax.Datatypes.Literal.{Integer, Varchar}
-    use SqlSyntax.Datatypes.Statement.{CreateTable}
+    use SqlSyntax.Datatypes.Statement.{CreateTable, Drop, Insert, Select}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
@@ -40,10 +41,12 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
     use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
     use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
-    use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, DefaultValuesIVC}
+    use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, SelectIVC, DefaultValuesIVC}
     use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
     use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
     use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
+    use SqlSyntax.Datatypes.SelectStmt.{SelectStmt}
+    use SqlSyntax.Datatypes.SelectClause.{SelectClause}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
@@ -72,7 +75,10 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
-        case CreateTable(stmt) => ppCreateTableStmt(stmt)
+        case CreateTable(stmt)  => ppCreateTableStmt(stmt)
+        case Drop(stmt)         => ppDropStmt(stmt)
+        case Insert(stmt)       => ppInsertStmt(stmt)
+        case Select(_stmt)      => text("Select - TODO")
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
@@ -170,6 +176,7 @@ mod SqlSyntax.Pretty {
             let vals = optionalIntersperse(text(", "), List.map(ppValuesList, xss));
             vals <^> ppOnConflictClause(occ)
         }
+        case SelectIVC(selStmt) => ppSelectStmt(selStmt)
         case DefaultValuesIVC(occ) => text("DEFAULT VALUES") <^> ppOnConflictClause(occ)
     }
 
@@ -201,6 +208,17 @@ mod SqlSyntax.Pretty {
         case (expr, None) => ppExpression(expr)
         case (expr, Some(b, exprAlias)) => ppExpression(expr) <^> docOrEmpty(b, text("AS")) <<>> text(exprAlias)
     }
+
+
+
+    pub def ppSelectStmt(x: SelectStmt): Doc = match x {
+        case SelectStmt(selClause) => ppSelectClause(selClause)
+    }
+
+    def ppSelectClause(x: SelectClause): Doc = match x {
+        case SelectClause => text("TODO")
+    }
+
 
     pub def ppSqlType(x: SqlType): Doc = match x {
         case VarcharType => text("VARCHAR")
