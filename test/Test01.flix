@@ -18,6 +18,8 @@ mod Test01 {
 
     use SqlSyntax.Datatypes.{SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
+    use SqlSyntax.Datatypes.Expression.{Literal}
+    use SqlSyntax.Datatypes.Literal.{Integer, Varchar}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
@@ -26,27 +28,29 @@ mod Test01 {
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
-    use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
+    use SqlSyntax.Datatypes.CascadeOrRestrict.{CascadeCR, RestrictCR}
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
     use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
     use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
-    use SqlSyntax.Datatypes.SqlType.{Varchar}
+    use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
+    use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, DefaultValuesIVC}
+    use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
     @test
     def test01(): Unit \ IO = 
-        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppSqlType(Varchar)))
+        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppSqlType(VarcharType)))
 
 
     @test
     def test02(): Unit \ IO = 
         let src = CreateTableStmt(true, false, true, UnqualifiedName("edge"), 
-                        List#{("from_edge", Column(Varchar, List#{AllowNullCC(false)})), ("to_edge", Column(Varchar, List#{AllowNullCC(false)}))}, 
+                        List#{("from_edge", Column(VarcharType, List#{AllowNullCC(false)})), ("to_edge", Column(VarcharType, List#{AllowNullCC(false)}))}, 
                         List#{PrimaryKeyTC(List#{"from_edge", "to_edge"})});
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppCreateTableStmt(src)))
 
     @test
     def test03(): Unit \ IO = 
-        let src = DropStmt(TableDQ, true, UnqualifiedName("edge"), Some(CascadeDC));
+        let src = DropStmt(TableDQ, true, UnqualifiedName("edge"), Some(CascadeCR));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppDropStmt(src)))
 
     @test
@@ -54,8 +58,8 @@ mod Test01 {
         let src = InsertStmt(Some(OrIgnoreIQ), UnqualifiedName("edge"), Some(UnqualifiedName("result")), 
                         List#{"from_edge", "to_edge"}, 
                         Some(ByNameICQ), 
-                        SqlSyntax.Datatypes.InsertValuesClause.TODO, 
-                        Some(SqlSyntax.Datatypes.InsertReturningClause.TODO));
+                        ValuesIVC(List#{List#{Literal(Integer(1)), Literal(Integer(2))}}, SqlSyntax.Datatypes.OnConflictClause.OnConflictClause),
+                        Some(ReturningClause(true, Nil)));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppInsertStmt(src)))
 
 }

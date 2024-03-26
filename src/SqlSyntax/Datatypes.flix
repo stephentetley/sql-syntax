@@ -22,9 +22,14 @@ mod SqlSyntax.Datatypes {
     pub type alias IfExistsB = Bool
     pub type alias IfNotExistsB = Bool
     pub type alias TableB = Bool
+    pub type alias StarB = Bool
+    pub type alias AsB = Bool
 
-    pub enum Expr with Eq, ToString {
-        case ExprTodo
+
+
+
+    pub enum Expression with Eq, ToString {
+        case Literal(Literal)
     }
 
     pub enum QualifiedName with Eq, ToString {
@@ -32,7 +37,10 @@ mod SqlSyntax.Datatypes {
         case UnqualifiedName(String)
     }
 
-
+    pub enum Literal with Eq, ToString {
+        case Integer(Int32) // TODO
+        case Varchar(String)
+    }
 
     // Columns and primary keys
     pub enum Statement with Eq, ToString {
@@ -55,8 +63,8 @@ mod SqlSyntax.Datatypes {
         case PrimaryKeyCC
         case AllowNullCC(Bool)
         case UniqueCC
-        case CheckCC(Expr)
-        case DefaultCC(Either[Expr, Expr])      // TODO left should be literal
+        case CheckCC(Expression)
+        case DefaultCC(Either[Literal, Expression])      // TODO left should be literal
         case ReferencesCC(String, List[String])
         case CollateCC(String)
     }
@@ -64,13 +72,13 @@ mod SqlSyntax.Datatypes {
     pub enum TableConstraint with Eq, ToString {
         case PrimaryKeyTC(List[String])
         case UniqueTC(List[String])
-        case CheckTC(Expr)
+        case CheckTC(Expression)
         case ForeignKeyTC(List[String], String, List[String])
     }
 
 
     pub enum DropStmt with Eq, ToString {
-        case DropStmt(DropQualifier, IfExistsB, QualifiedName, Option[DropClause])
+        case DropStmt(DropQualifier, IfExistsB, QualifiedName, Option[CascadeOrRestrict])
     }
 
     pub enum DropQualifier with Eq, ToString {
@@ -84,14 +92,14 @@ mod SqlSyntax.Datatypes {
         case TypeDQ
     }
 
-    pub enum DropClause with Eq, ToString {
-        case CascadeDC
-        case RestrictDC
+    pub enum CascadeOrRestrict with Eq, ToString {
+        case CascadeCR
+        case RestrictCR
     }
 
 
     pub enum InsertStmt with Eq, ToString {
-        case InsertStmt(Option[InsertQualifier], QualifiedName, Option[QualifiedName], List[String], Option[InsertColumnQualifier], InsertValuesClause, Option[InsertReturningClause])
+        case InsertStmt(Option[InsertQualifier], QualifiedName, Option[QualifiedName], List[String], Option[InsertColumnQualifier], InsertValuesClause, Option[ReturningClause])
     }
 
     pub enum InsertQualifier with Eq, ToString {
@@ -105,16 +113,22 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum InsertValuesClause with Eq, ToString {
-        case TODO
+        case ValuesIVC(List[List[Expression]], OnConflictClause)
+        case DefaultValuesIVC(OnConflictClause)
     }
 
-    pub enum InsertReturningClause with Eq, ToString {
-        case TODO
+    pub enum ReturningClause with Eq, ToString {
+        case ReturningClause(StarB, List[(Expression, Option[(AsB, String)])])
     }
+
+    pub enum OnConflictClause with Eq, ToString {
+        case OnConflictClause   // TODO
+    }
+
 
     pub enum SqlType with Eq, ToString {
-        case Varchar
-        case Integer
+        case VarcharType
+        case IntegerType
     }
 
 

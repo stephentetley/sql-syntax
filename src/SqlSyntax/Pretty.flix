@@ -18,13 +18,17 @@ mod SqlSyntax.Pretty {
 
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
-    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, comma, space, tupled, optionalTupled}
+    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, comma, space, tupled, optionalTupled, 
+        int32, squotes}
 
-    use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
-    use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
-        QualifiedName, DropQualifier, DropClause, 
-        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, InsertReturningClause, 
+    use SqlSyntax.Datatypes.{Expression, Literal, 
+        Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
+        QualifiedName, DropQualifier, CascadeOrRestrict, 
+        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, ReturningClause, 
         SqlType}
+    use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
+    use SqlSyntax.Datatypes.Expression.{Literal}
+    use SqlSyntax.Datatypes.Literal.{Integer, Varchar}
     use SqlSyntax.Datatypes.Statement.{CreateTable}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
@@ -32,13 +36,22 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
-    use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
+    use SqlSyntax.Datatypes.CascadeOrRestrict.{CascadeCR, RestrictCR}
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
     use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
     use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
-    use SqlSyntax.Datatypes.InsertValuesClause.{TODO}
-    use SqlSyntax.Datatypes.InsertReturningClause.{TODO}
-    use SqlSyntax.Datatypes.SqlType.{Varchar, Integer}
+    use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, DefaultValuesIVC}
+    use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
+    use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
+    use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
+
+
+    // TEMP - add to flix-pretty
+    def optionalIntersperse(sepd: Doc, docs: List[Doc]): Doc = match Text.PrettyPrint.removeEmpties(docs) {
+        case Nil => empty()
+        case xs  => intersperse(sepd, xs)
+    }
+
 
     def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
 
@@ -53,8 +66,8 @@ mod SqlSyntax.Pretty {
     }
 
 
-    pub def ppExpr(x: Expr): Doc = match x {
-        case _ => text("Expr TODO")
+    pub def ppExpression(x: Expression): Doc = match x {
+        case Literal(lit) => ppLiteral(lit)
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
@@ -84,9 +97,9 @@ mod SqlSyntax.Pretty {
         case PrimaryKeyCC               => text("PRIMARY KEY")
         case AllowNullCC(b)             => if (b) text("NULL") else text("NOT NULL")
         case UniqueCC                   => text("UNIQUE")
-        case CheckCC(expr)              => text("CHECK") <<>> parens(ppExpr(expr)) 
-        case DefaultCC(Left(lit))       => text("DEFAULT") <<>> ppExpr(lit)
-        case DefaultCC(Right(expr))     => text("DEFAULT") <<>> parens(ppExpr(expr))
+        case CheckCC(expr)              => text("CHECK") <<>> parens(ppExpression(expr)) 
+        case DefaultCC(Left(lit))       => text("DEFAULT") <<>> ppLiteral(lit)
+        case DefaultCC(Right(expr))     => text("DEFAULT") <<>> parens(ppExpression(expr))
         case ReferencesCC(ft, names)    => text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, names))
         case CollateCC(cname)           => text("COLLATE") <<>> text(cname)
     }
@@ -94,17 +107,17 @@ mod SqlSyntax.Pretty {
     def ppTableConstraint(x: TableConstraint): Doc = match x {
         case PrimaryKeyTC(cols)             => text("PRIMARY KEY") <<>> tupled(List.map(text, cols))
         case UniqueTC(cols)                 => text("UNIQUE") <<>> tupled(List.map(text, cols))
-        case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpr(expr)) 
+        case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpression(expr)) 
         case ForeignKeyTC(cols, ft, fcols)  => 
             text("FOREIGN KEY") <<>> tupled(List.map(text, cols)) <<>> text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, fcols))
     }
 
 
     pub def ppDropStmt(x: DropStmt): Doc = match x {
-        case DropStmt(tyqual, ifExistsB, qname, optDc) => 
-            let ifExistsD = docOrEmpty(ifExistsB, text("IF EXISTS"));
-            let dcD = someOrEmpty(optDc, ppDropClause);
-            text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExistsD <<>> ppQualifiedName(qname) <^> dcD
+        case DropStmt(tyqual, ifExistsB, qname, optCascadeRestrict) => 
+            let ifExists = docOrEmpty(ifExistsB, text("IF EXISTS"));
+            let cascadeRestrict = someOrEmpty(optCascadeRestrict, ppCascadeOrRestrict);
+            text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExists <<>> ppQualifiedName(qname) <^> cascadeRestrict
     }
 
     def ppDropQualifier(x: DropQualifier): Doc = match x {
@@ -118,24 +131,24 @@ mod SqlSyntax.Pretty {
         case TypeDQ     => text("TYPE")
     }
     
-    def ppDropClause(x: DropClause): Doc = match x {
-        case CascadeDC  => text("CASCADE")
-        case RestrictDC => text("RESTRICT")
+    def ppCascadeOrRestrict(x: CascadeOrRestrict): Doc = match x {
+        case CascadeCR  => text("CASCADE")
+        case RestrictCR => text("RESTRICT")
     }
 
     pub def ppInsertStmt(x:  InsertStmt): Doc = match x {
-        case InsertStmt(optQual, qname, optAsName, cols, optColQual, valClause, optRetClause) => 
-            let qualD = someOrEmpty(optQual, ppInsertQualifier);
-            let asNameD = someOrEmpty(optAsName, name -> text("AS") <<>> ppQualifiedName(name));
+        case InsertStmt(optInsQual, qname, optAsName, cols, optColQual, valClause, optRetClause) => 
+            let insQual = someOrEmpty(optInsQual, ppInsertQualifier);
+            let asName = someOrEmpty(optAsName, name -> text("AS") <<>> ppQualifiedName(name));
             let colsD = optionalTupled(List.map(text, cols));
-            let colQualD = someOrEmpty(optColQual, ppInsertColumnQualifier);
-            let retClauseD = someOrEmpty(optRetClause, ppInsertReturningClause);
-            text("INSERT") <^> qualD <<>> text("INTO") 
+            let colQual = someOrEmpty(optColQual, ppInsertColumnQualifier);
+            let retClause = someOrEmpty(optRetClause, ppInsertReturningClause);
+            text("INSERT") <^> insQual <<>> text("INTO") 
                 <<>> ppQualifiedName(qname) 
-                <^> asNameD 
-                <^> colsD <^> colQualD
+                <^> asName 
+                <^> colsD <^> colQual
                 <<>> ppInsertValuesClause(valClause)
-                <^> retClauseD
+                <^> retClause
 
     }
 
@@ -151,18 +164,37 @@ mod SqlSyntax.Pretty {
 
 
     def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
-        case InsertValuesClause.TODO => text("TODO")
+        case ValuesIVC(xss, occ) => {
+            let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
+            let vals = optionalIntersperse(text(", "), List.map(ppValuesList, xss));
+            vals <^> ppOnConflictClause(occ)
+        }
+        case DefaultValuesIVC(occ) => text("DEFAULT VALUES") <^> ppOnConflictClause(occ)
     }
 
-    def ppInsertReturningClause(x: InsertReturningClause): Doc = match x {
-        case TODO => text("TODO")
+   def ppOnConflictClause(x: OnConflictClause): Doc = match x {
+        case OnConflictClause => text("[ON CONFLICT] TODO")
     }
 
+    def ppInsertReturningClause(x: ReturningClause): Doc = match x {
+        case ReturningClause(starB, retExprs) => 
+            let star = docOrEmpty(starB, text("*"));
+            text("RETURNING") <<>> optionalIntersperse(text(", "), star :: List.map(ppReturnExpression, retExprs))
+    }
+
+    def ppReturnExpression(x: (Expression, Option[(Bool, String)])): Doc = match x {
+        case (expr, None) => ppExpression(expr)
+        case (expr, Some(b, exprAlias)) => ppExpression(expr) <^> docOrEmpty(b, text("AS")) <<>> text(exprAlias)
+    }
 
     pub def ppSqlType(x: SqlType): Doc = match x {
-        case Varchar => text("VARCHAR")
-        case Integer => text("INTEGER")
+        case VarcharType => text("VARCHAR")
+        case IntegerType => text("INTEGER")
     }
 
+    pub def ppLiteral(x: Literal): Doc = match x {
+        case Integer(i) => int32(i)
+        case Varchar(s) => squotes(text(s))
+    }
 
 }
