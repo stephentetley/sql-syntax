@@ -22,15 +22,22 @@ mod SqlSyntax.Pretty {
 
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
-        SqlType, QualifiedName, DropQualifier, DropClause}
+        QualifiedName, DropQualifier, DropClause, 
+        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, InsertReturningClause, 
+        SqlType}
     use SqlSyntax.Datatypes.Statement.{CreateTable}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
-    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
+    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
     use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
+    use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
+    use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
+    use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
+    use SqlSyntax.Datatypes.InsertValuesClause.{TODO}
+    use SqlSyntax.Datatypes.InsertReturningClause.{TODO}
     use SqlSyntax.Datatypes.SqlType.{Varchar, Integer}
 
     def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
@@ -47,7 +54,7 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppExpr(x: Expr): Doc = match x {
-        case _ => text("Expr - todo")
+        case _ => text("Expr TODO")
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
@@ -65,18 +72,15 @@ mod SqlSyntax.Pretty {
                 <<>> optionalTupled(colsDs ++ List#{tblConstrsD})
     }
 
-
-
-
-    pub def ppColumnSpec(x: ColumnSpec): Doc = match x {
+    def ppColumnSpec(x: ColumnSpec): Doc = match x {
         case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
         case GeneratedColumn(ty, _genAlwaysB) => ppSqlType(ty) <<>> text("TODO")
     }
 
-    pub def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
+    def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
         intersperse(space(), List.map(ppColumnConstraint, xs))
 
-    pub def ppColumnConstraint(x: ColumnConstraint): Doc = match x {
+    def ppColumnConstraint(x: ColumnConstraint): Doc = match x {
         case PrimaryKeyCC               => text("PRIMARY KEY")
         case AllowNullCC(b)             => if (b) text("NULL") else text("NOT NULL")
         case UniqueCC                   => text("UNIQUE")
@@ -87,7 +91,7 @@ mod SqlSyntax.Pretty {
         case CollateCC(cname)           => text("COLLATE") <<>> text(cname)
     }
 
-    pub def ppTableConstraint(x: TableConstraint): Doc = match x {
+    def ppTableConstraint(x: TableConstraint): Doc = match x {
         case PrimaryKeyTC(cols)             => text("PRIMARY KEY") <<>> tupled(List.map(text, cols))
         case UniqueTC(cols)                 => text("UNIQUE") <<>> tupled(List.map(text, cols))
         case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpr(expr)) 
@@ -103,7 +107,7 @@ mod SqlSyntax.Pretty {
             text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExistsD <<>> ppQualifiedName(qname) <^> dcD
     }
 
-    pub def ppDropQualifier(x: DropQualifier): Doc = match x {
+    def ppDropQualifier(x: DropQualifier): Doc = match x {
         case FunctionDQ => text("FUNCTION")
         case IndexDQ    => text("SEQUENCE")
         case MacroDQ(b) => text("MACRO") <^> docOrEmpty(b, text("TABLE"))
@@ -114,10 +118,46 @@ mod SqlSyntax.Pretty {
         case TypeDQ     => text("TYPE")
     }
     
-    pub def ppDropClause(x: DropClause): Doc = match x {
+    def ppDropClause(x: DropClause): Doc = match x {
         case CascadeDC  => text("CASCADE")
         case RestrictDC => text("RESTRICT")
     }
+
+    pub def ppInsertStmt(x:  InsertStmt): Doc = match x {
+        case InsertStmt(optQual, qname, optAsName, cols, optColQual, valClause, optRetClause) => 
+            let qualD = someOrEmpty(optQual, ppInsertQualifier);
+            let asNameD = someOrEmpty(optAsName, name -> text("AS") <<>> ppQualifiedName(name));
+            let colsD = optionalTupled(List.map(text, cols));
+            let colQualD = someOrEmpty(optColQual, ppInsertColumnQualifier);
+            let retClauseD = someOrEmpty(optRetClause, ppInsertReturningClause);
+            text("INSERT") <^> qualD <<>> text("INTO") 
+                <<>> ppQualifiedName(qname) 
+                <^> asNameD 
+                <^> colsD <^> colQualD
+                <<>> ppInsertValuesClause(valClause)
+                <^> retClauseD
+
+    }
+
+    def ppInsertQualifier(x: InsertQualifier): Doc = match x {
+        case OrReplaceIQ    => text("OR REPLACE")
+        case OrIgnoreIQ     => text("OR IGNORE")
+    }
+
+    def ppInsertColumnQualifier(x: InsertColumnQualifier): Doc = match x {
+        case ByPositionICQ  => text("BY POSITION")
+        case ByNameICQ      => text("BY NAME")
+    }
+
+
+    def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
+        case InsertValuesClause.TODO => text("TODO")
+    }
+
+    def ppInsertReturningClause(x: InsertReturningClause): Doc = match x {
+        case TODO => text("TODO")
+    }
+
 
     pub def ppSqlType(x: SqlType): Doc = match x {
         case Varchar => text("VARCHAR")

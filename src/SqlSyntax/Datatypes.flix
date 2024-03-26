@@ -90,6 +90,28 @@ mod SqlSyntax.Datatypes {
     }
 
 
+    pub enum InsertStmt with Eq, ToString {
+        case InsertStmt(Option[InsertQualifier], QualifiedName, Option[QualifiedName], List[String], Option[InsertColumnQualifier], InsertValuesClause, Option[InsertReturningClause])
+    }
+
+    pub enum InsertQualifier with Eq, ToString {
+        case OrReplaceIQ
+        case OrIgnoreIQ
+    }
+
+    pub enum InsertColumnQualifier with Eq, ToString {
+        case ByPositionICQ
+        case ByNameICQ
+    }
+
+    pub enum InsertValuesClause with Eq, ToString {
+        case TODO
+    }
+
+    pub enum InsertReturningClause with Eq, ToString {
+        case TODO
+    }
+
     pub enum SqlType with Eq, ToString {
         case Varchar
         case Integer

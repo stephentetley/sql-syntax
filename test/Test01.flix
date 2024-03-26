@@ -17,15 +17,20 @@
 mod Test01 {
 
     use SqlSyntax.Datatypes.{SqlType}
+    use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
-    use SqlSyntax.Datatypes.SqlType.{Varchar}
-    use SqlSyntax.Datatypes.QualifiedName.{UnqualifiedName}
+    use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
+    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
     use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
+    use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
+    use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
+    use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
+    use SqlSyntax.Datatypes.SqlType.{Varchar}
 
     @test
     def test01(): Unit \ IO = 
@@ -41,7 +46,16 @@ mod Test01 {
 
     @test
     def test03(): Unit \ IO = 
-        let src = DropStmt(TableDQ, false, UnqualifiedName("edge"), Some(CascadeDC));
+        let src = DropStmt(TableDQ, true, UnqualifiedName("edge"), Some(CascadeDC));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppDropStmt(src)))
+
+    @test
+    def test04(): Unit \ IO = 
+        let src = InsertStmt(Some(OrIgnoreIQ), UnqualifiedName("edge"), Some(UnqualifiedName("result")), 
+                        List#{"from_edge", "to_edge"}, 
+                        Some(ByNameICQ), 
+                        SqlSyntax.Datatypes.InsertValuesClause.TODO, 
+                        Some(SqlSyntax.Datatypes.InsertReturningClause.TODO));
+        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppInsertStmt(src)))
 
 }
