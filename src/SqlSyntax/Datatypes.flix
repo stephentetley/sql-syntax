@@ -17,9 +17,21 @@
 mod SqlSyntax.Datatypes {
 
 
+    pub type alias OrReplaceB = Bool
+    pub type alias TemporaryB = Bool
+    pub type alias IfExistsB = Bool
+    pub type alias IfNotExistsB = Bool
+    pub type alias TableB = Bool
+
     pub enum Expr with Eq, ToString {
         case ExprTodo
     }
+
+    pub enum QualifiedName with Eq, ToString {
+        case QualifiedName(String, String)
+        case UnqualifiedName(String)
+    }
+
 
 
     // Columns and primary keys
@@ -28,17 +40,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum CreateTableStmt with Eq, ToString {
-        case CreateTableStmt(OrReplaceB, TemporaryB, IfNotExistsB, QualifiedTableName, List[(String, ColumnSpec)], List[TableConstraint])
-    }
-
-    pub type alias OrReplaceB = Bool
-    pub type alias TemporaryB = Bool
-    pub type alias IfNotExistsB = Bool
-
-
-    pub enum QualifiedTableName with Eq, ToString {
-        case QualifiedTableName(String, String)
-        case UnqualifiedTableName(String)
+        case CreateTableStmt(OrReplaceB, TemporaryB, IfNotExistsB, QualifiedName, List[(String, ColumnSpec)], List[TableConstraint])
     }
 
 
@@ -65,6 +67,28 @@ mod SqlSyntax.Datatypes {
         case CheckTC(Expr)
         case ForeignKeyTC(List[String], String, List[String])
     }
+
+
+    pub enum DropStmt with Eq, ToString {
+        case DropStmt(DropQualifier, IfExistsB, QualifiedName, Option[DropClause])
+    }
+
+    pub enum DropQualifier with Eq, ToString {
+        case FunctionDQ
+        case IndexDQ
+        case MacroDQ(TableB)
+        case SchemaDQ
+        case SequenceDQ
+        case TableDQ
+        case ViewDQ
+        case TypeDQ
+    }
+
+    pub enum DropClause with Eq, ToString {
+        case CascadeDC
+        case RestrictDC
+    }
+
 
     pub enum SqlType with Eq, ToString {
         case Varchar

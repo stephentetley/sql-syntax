@@ -18,11 +18,14 @@ mod Test01 {
 
     use SqlSyntax.Datatypes.{SqlType}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
+    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.SqlType.{Varchar}
-    use SqlSyntax.Datatypes.QualifiedTableName.{UnqualifiedTableName}
+    use SqlSyntax.Datatypes.QualifiedName.{UnqualifiedName}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
+    use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
+    use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
 
     @test
     def test01(): Unit \ IO = 
@@ -31,10 +34,14 @@ mod Test01 {
 
     @test
     def test02(): Unit \ IO = 
-        let src = CreateTableStmt(true, false, true, UnqualifiedTableName("edge"), 
+        let src = CreateTableStmt(true, false, true, UnqualifiedName("edge"), 
                         List#{("from_edge", Column(Varchar, List#{AllowNullCC(false)})), ("to_edge", Column(Varchar, List#{AllowNullCC(false)}))}, 
                         List#{PrimaryKeyTC(List#{"from_edge", "to_edge"})});
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppCreateTableStmt(src)))
 
+    @test
+    def test03(): Unit \ IO = 
+        let src = DropStmt(TableDQ, false, UnqualifiedName("edge"), Some(CascadeDC));
+        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppDropStmt(src)))
 
 }

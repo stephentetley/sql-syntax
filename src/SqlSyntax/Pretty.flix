@@ -20,17 +20,31 @@ mod SqlSyntax.Pretty {
     use Text.PrettyPrint.Doc
     use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, comma, space, tupled, optionalTupled}
 
-    use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
-        SqlType, QualifiedTableName}
+    use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
+    use SqlSyntax.Datatypes.{Expr, Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
+        SqlType, QualifiedName, DropQualifier, DropClause}
     use SqlSyntax.Datatypes.Statement.{CreateTable}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
-    use SqlSyntax.Datatypes.QualifiedTableName.{QualifiedTableName, UnqualifiedTableName}
+    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
     use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
+    use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
+    use SqlSyntax.Datatypes.DropClause.{CascadeDC, RestrictDC}
     use SqlSyntax.Datatypes.SqlType.{Varchar, Integer}
 
-    pub def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
+    def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
+
+    def someOrEmpty(x: Option[a], f: a -> Doc): Doc = match x { 
+        case Some(a) => f(a)
+        case None => empty()
+    }
+
+    pub def ppQualifiedName(x: QualifiedName): Doc = match x {
+        case QualifiedName(scm, name) => text(scm ++ "." ++ name)
+        case UnqualifiedName(name)    => text(name)
+    }
+
 
     pub def ppExpr(x: Expr): Doc = match x {
         case _ => text("Expr - todo")
@@ -47,20 +61,15 @@ mod SqlSyntax.Pretty {
             let ifNotExists = docOrEmpty(notExistsB, text("IF NOT EXISTS"));
             let colsDs = List.map(match (n,ty) -> text(n) <<>> ppColumnSpec(ty), cols);
             let tblConstrsD = sep(List.map(ppTableConstraint, tblConstrs));
-            text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedTableName(qname) 
+            text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedName(qname) 
                 <<>> optionalTupled(colsDs ++ List#{tblConstrsD})
     }
 
 
 
-    pub def ppQualifiedTableName(x: QualifiedTableName): Doc = match x {
-        case QualifiedTableName(scm, name) => text(scm ++ "." ++ name)
-        case UnqualifiedTableName(name) => text(name)
-    }
-
 
     pub def ppColumnSpec(x: ColumnSpec): Doc = match x {
-        case Column(ty, constrs) => ppSqlType(ty) <^> ppColumnConstraints(constrs)
+        case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
         case GeneratedColumn(ty, _genAlwaysB) => ppSqlType(ty) <<>> text("TODO")
     }
 
@@ -84,6 +93,30 @@ mod SqlSyntax.Pretty {
         case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpr(expr)) 
         case ForeignKeyTC(cols, ft, fcols)  => 
             text("FOREIGN KEY") <<>> tupled(List.map(text, cols)) <<>> text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, fcols))
+    }
+
+
+    pub def ppDropStmt(x: DropStmt): Doc = match x {
+        case DropStmt(tyqual, ifExistsB, qname, optDc) => 
+            let ifExistsD = docOrEmpty(ifExistsB, text("IF EXISTS"));
+            let dcD = someOrEmpty(optDc, ppDropClause);
+            text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExistsD <<>> ppQualifiedName(qname) <^> dcD
+    }
+
+    pub def ppDropQualifier(x: DropQualifier): Doc = match x {
+        case FunctionDQ => text("FUNCTION")
+        case IndexDQ    => text("SEQUENCE")
+        case MacroDQ(b) => text("MACRO") <^> docOrEmpty(b, text("TABLE"))
+        case SchemaDQ   => text("SCHEMA")
+        case SequenceDQ => text("SEQUENCE")
+        case TableDQ    => text("TABLE")
+        case ViewDQ     => text("VIEW")
+        case TypeDQ     => text("TYPE")
+    }
+    
+    pub def ppDropClause(x: DropClause): Doc = match x {
+        case CascadeDC  => text("CASCADE")
+        case RestrictDC => text("RESTRICT")
     }
 
     pub def ppSqlType(x: SqlType): Doc = match x {
