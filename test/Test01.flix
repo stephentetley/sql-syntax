@@ -32,6 +32,8 @@ mod Test01 {
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
     use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
     use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
+    use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
+    use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
     use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
     use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, DefaultValuesIVC}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
@@ -58,7 +60,7 @@ mod Test01 {
         let src = InsertStmt(Some(OrIgnoreIQ), UnqualifiedName("edge"), Some(UnqualifiedName("result")), 
                         List#{"from_edge", "to_edge"}, 
                         Some(ByNameICQ), 
-                        ValuesIVC(List#{List#{Literal(Integer(1)), Literal(Integer(2))}}, SqlSyntax.Datatypes.OnConflictClause.OnConflictClause),
+                        ValuesIVC(List#{List#{Literal(Integer(1)), Literal(Integer(2))}}, OnConflictClause(List#{"from_edge", "to_edge"}, None, DoNothing)),
                         Some(ReturningClause(true, Nil)));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppInsertStmt(src)))
 

@@ -122,9 +122,13 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum OnConflictClause with Eq, ToString {
-        case OnConflictClause   // TODO
+        case OnConflictClause(List[String], Option[Expression], DoUpdateOrDoNothing)
     }
 
+    pub enum DoUpdateOrDoNothing with Eq, ToString {
+        case DoUpdate(List[(String, Expression)], Option[Expression])
+        case DoNothing
+    }
 
     pub enum SqlType with Eq, ToString {
         case VarcharType

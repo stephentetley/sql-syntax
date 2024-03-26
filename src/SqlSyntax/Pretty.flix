@@ -18,13 +18,13 @@ mod SqlSyntax.Pretty {
 
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
-    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, comma, space, tupled, optionalTupled, 
+    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
         int32, squotes}
 
     use SqlSyntax.Datatypes.{Expression, Literal, 
         Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
-        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, ReturningClause, 
+        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -43,6 +43,7 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, DefaultValuesIVC}
     use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
     use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
+    use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
@@ -172,8 +173,22 @@ mod SqlSyntax.Pretty {
         case DefaultValuesIVC(occ) => text("DEFAULT VALUES") <^> ppOnConflictClause(occ)
     }
 
-   def ppOnConflictClause(x: OnConflictClause): Doc = match x {
-        case OnConflictClause => text("[ON CONFLICT] TODO")
+    def ppOnConflictClause(x: OnConflictClause): Doc = match x {
+        case OnConflictClause(cols, optWhereExpr, dudn) => {
+            let columns = optionalTupled(List.map(text, cols));
+            let whereExpr = someOrEmpty(optWhereExpr, expr -> text("WHERE") <<>> ppExpression(expr));
+            text("ON CONFLICT") <^> columns <^> whereExpr <<>> ppDoUpdateOrDoNothing(dudn)
+        }
+    }
+
+
+    def ppDoUpdateOrDoNothing(x: DoUpdateOrDoNothing): Doc = match x {
+        case DoUpdate(setExprs, optWhereExpr) => {
+            let setCols = intersperse(text(", "), List.map(match (col, expr) -> text(col) <<>> equals() <<>> ppExpression(expr), setExprs));
+            let whereExpr = someOrEmpty(optWhereExpr, expr -> text("WHERE") <<>> ppExpression(expr));
+            text("DO UPDATE") <<>> text("SET") <<>> setCols <^> whereExpr
+        }
+        case DoNothing => text("DO NOTHING")
     }
 
     def ppInsertReturningClause(x: ReturningClause): Doc = match x {
