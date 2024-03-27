@@ -19,7 +19,7 @@ mod SqlSyntax.Pretty {
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
     use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
-        dot, char, int32, squotes}
+        dot, char, int32, squotes, conditionalParens}
 
     use SqlSyntax.Datatypes.{TODO}
     use SqlSyntax.Datatypes.TODO.{TODO}
@@ -29,6 +29,8 @@ mod SqlSyntax.Pretty {
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
         SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, ColumnExpression,
+        ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, TableAlias, TableSample, 
+        PercentOrRowCount, SamplingMethod, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -45,6 +47,7 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
     use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
     use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, SelectIVC, DefaultValuesIVC}
+    use SqlSyntax.Datatypes.ValuesClause.{ValuesClause}
     use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
     use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
     use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
@@ -54,6 +57,14 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.SelectExpr.{SelectExpr, SelectStar, SelectColumns}
     use SqlSyntax.Datatypes.StarOptions.{StarOptions}
     use SqlSyntax.Datatypes.ColumnExpression.{ColumnStar, ColumnRegex, ColumnLambda}
+    use SqlSyntax.Datatypes.FromClause.{FromClause}
+    use SqlSyntax.Datatypes.FromExpressionOrJoin.{FromExpression, JoinExpression}
+    use SqlSyntax.Datatypes.FromExpression.{TableReference, TableFunction, Subquery, Values}
+    use SqlSyntax.Datatypes.JoinClause.{JoinClause}
+    use SqlSyntax.Datatypes.TableAlias.{TableAlias}
+    use SqlSyntax.Datatypes.TableSample.{SizeFirst, FunctionStyle}
+    use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, Rows}
+    use SqlSyntax.Datatypes.SamplingMethod.{Reservoir, Bernoulli, System}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
@@ -183,12 +194,16 @@ mod SqlSyntax.Pretty {
 
 
     def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
-        case ValuesIVC(xss)     => {
-            let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
-            optionalIntersperse(text(", "), List.map(ppValuesList, xss))
-        }
+        case ValuesIVC(vals)     => ppValuesClause(vals)
         case SelectIVC(selStmt) => ppSelectStmt(selStmt)
         case DefaultValuesIVC   => text("DEFAULT VALUES")
+    }
+
+    def ppValuesClause(x: ValuesClause): Doc = match x {
+        case ValuesClause(xss)     => {
+            let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
+            text("VALUES") <<>> intersperse(text(", "), List.map(ppValuesList, xss))
+        }
     }
 
     def ppOnConflictClause(x: OnConflictClause): Doc = match x {
@@ -223,7 +238,8 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppSelectStmt(x: SelectStmt): Doc = match x {
-        case SelectStmt(selClause) => ppSelectClause(selClause)
+        case SelectStmt(selClause, fromClause) => 
+            ppSelectClause(selClause) <<>> ppFromClause(fromClause)
     }
 
     def ppSelectClause(x: SelectClause): Doc = match x {
@@ -268,6 +284,70 @@ mod SqlSyntax.Pretty {
         }
         case ColumnRegex(regex) => squotes(text(regex))
         case ColumnLambda(todo) => ppTODO(todo)
+    }
+
+    def ppFromClause(x: FromClause): Doc = match x {
+        case FromClause(exprs) => { 
+            let exprList = intersperse(text(", "), List.map(ppFromExpressionOrJoin, exprs));
+            text("FROM") <<>> exprList
+        }
+    }
+
+    def ppFromExpressionOrJoin(x: FromExpressionOrJoin): Doc = match x {
+        case FromExpression(expr, optAlias, optSample) => {
+            let tableAlias = someOrEmpty(optAlias, ppTableAlias);
+            let sample = someOrEmpty(optSample, ppTableSample);
+            ppFromExpression(expr) <^> tableAlias <^> sample
+        }
+        case JoinExpression(parensB, joinClause, optAlias) => {
+            let joinAlias = someOrEmpty(optAlias, s -> text("AS") <<>> text(s));
+            conditionalParens(parensB, ppJoinClause(joinClause) <^> joinAlias)
+        }
+    }
+
+    def ppFromExpression(x: FromExpression): Doc = match x {
+        case TableReference(qname)          => ppQualifiedName(qname)
+        case TableFunction(qname, exprs)    => ppQualifiedName(qname) ++ tupled(List.map(ppExpression, exprs))
+        case Subquery(stmt)                 => parens(ppSelectStmt(stmt))
+        case Values(valsClause)             => parens(ppValuesClause(valsClause))
+    }
+
+    def ppJoinClause(x: JoinClause): Doc = match x { 
+        case JoinClause(todo) => ppTODO(todo)
+    }
+
+    def ppTableAlias(x: TableAlias): Doc = match x {
+        case TableAlias(asB, tableAlias, optCols) => 
+        let asKwd = docOrEmpty(asB, text("AS"));
+        let columns = someOrEmpty(optCols, cols -> optionalTupled(List.map(text, cols)));
+        asKwd <^> text(tableAlias) <^> columns
+    }
+
+    def ppTableSample(x: TableSample): Doc = match x { 
+        case SizeFirst(sz, optUnit, optMethod) => {
+            let sampleUnit = someOrEmpty(optUnit, ppPercentOrRowCount);
+            let sampleMethod = someOrEmpty(optMethod, 
+                match (s, optCount) -> parens(ppSamplingMethod(s) <^> someOrEmpty(optCount, i -> comma() <<>> int32(i))));
+            int32(sz) <^> sampleUnit <^> sampleMethod
+        }
+        case FunctionStyle(optMethod, sz, optUnit, optSeed) => {
+            let sampleMethod = someOrEmpty(optMethod, ppSamplingMethod);
+            let sampleUnit = someOrEmpty(optUnit, ppPercentOrRowCount);
+            let seed = someOrEmpty(optSeed, i -> text("REPEATABLE") <<>> parens(int32(i)));
+            sampleMethod <^> parens(int32(sz) <^> sampleUnit) <^> seed
+        }
+    }
+
+
+    def ppPercentOrRowCount(x: PercentOrRowCount): Doc = match x {
+        case Percent(b) => if (b) char('%') else text("PERCENT")
+        case Rows       => text("ROWS")
+    }
+
+    def ppSamplingMethod(x: SamplingMethod): Doc = match x {
+        case Reservoir  => text("reservoir")
+        case Bernoulli  => text("bernoulli")
+        case System     => text("system")
     }
 
     pub def ppSqlType(x: SqlType): Doc = match x {

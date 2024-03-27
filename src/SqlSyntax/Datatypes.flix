@@ -24,7 +24,8 @@ mod SqlSyntax.Datatypes {
     pub type alias TableB = Bool
     pub type alias StarB = Bool
     pub type alias AsB = Bool
-
+    pub type alias AsSymbolB = Bool
+    pub type alias ParensB = Bool
 
     pub enum TODO with Eq, ToString {
         case TODO(String)
@@ -117,8 +118,9 @@ mod SqlSyntax.Datatypes {
         case ByNameICQ
     }
 
+
     pub enum InsertValuesClause with Eq, ToString {
-        case ValuesIVC(List[List[Expression]])
+        case ValuesIVC(ValuesClause)
         case SelectIVC(SelectStmt)
         case DefaultValuesIVC
     }
@@ -136,8 +138,11 @@ mod SqlSyntax.Datatypes {
         case DoNothing
     }
 
+    pub enum ValuesClause with Eq, ToString {
+        case ValuesClause(List[List[Expression]])
+    }
     pub enum SelectStmt with Eq, ToString {
-        case SelectStmt(SelectClause)
+        case SelectStmt(SelectClause, FromClause)
     }
 
     pub enum SelectClause with Eq, ToString {
@@ -164,6 +169,49 @@ mod SqlSyntax.Datatypes {
         case ColumnRegex(String)
         case ColumnLambda(TODO)
     }
+
+    pub enum FromClause with Eq, ToString {
+        case FromClause(List[FromExpressionOrJoin])
+    }
+
+    pub enum FromExpressionOrJoin with Eq, ToString {
+        case FromExpression(FromExpression, Option[TableAlias], Option[TableSample])
+        case JoinExpression(ParensB, JoinClause, Option[String])
+    }
+
+
+    pub enum FromExpression with Eq, ToString {
+        case TableReference(QualifiedName)
+        case TableFunction(QualifiedName, List[Expression])
+        case Subquery(SelectStmt)
+        case Values(ValuesClause)
+    }
+
+    pub enum JoinClause with Eq, ToString {
+        case JoinClause(TODO)
+    }
+
+    pub enum TableAlias with Eq, ToString {
+        case TableAlias(AsB, String, Option[List[String]])
+    }
+
+    pub enum TableSample with Eq, ToString {
+        case SizeFirst(Int32, Option[PercentOrRowCount], Option[(SamplingMethod, Option[Int32])])
+        case FunctionStyle(Option[SamplingMethod], Int32, Option[PercentOrRowCount], Option[Int32])
+    }
+
+    // `Precent(true)` to show as `%`
+    pub enum PercentOrRowCount with Eq, ToString {
+        case Percent(AsSymbolB)
+        case Rows
+    }
+
+    pub enum SamplingMethod with Eq, ToString {
+        case Reservoir
+        case Bernoulli
+        case System
+    }
+
 
     pub enum SqlType with Eq, ToString {
         case VarcharType
