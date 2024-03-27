@@ -26,7 +26,9 @@ mod SqlSyntax.Datatypes {
     pub type alias AsB = Bool
 
 
-
+    pub enum TODO with Eq, ToString {
+        case TODO(String)
+    }
 
     pub enum Expression with Eq, ToString {
         case Literal(Literal)
@@ -57,7 +59,7 @@ mod SqlSyntax.Datatypes {
 
     pub enum ColumnSpec with Eq, ToString {
         case Column(SqlType, List[ColumnConstraint])
-        case GeneratedColumn(SqlType, GeneratedAlwaysB)
+        case GeneratedColumn(SqlType, TODO)
     }
 
     pub type alias GeneratedAlwaysB = Bool
@@ -102,7 +104,7 @@ mod SqlSyntax.Datatypes {
 
 
     pub enum InsertStmt with Eq, ToString {
-        case InsertStmt(Option[InsertQualifier], QualifiedName, Option[QualifiedName], List[String], Option[InsertColumnQualifier], InsertValuesClause, Option[ReturningClause])
+        case InsertStmt(Option[InsertQualifier], QualifiedName, Option[QualifiedName], List[String], Option[InsertColumnQualifier], InsertValuesClause, Option[OnConflictClause], Option[ReturningClause])
     }
 
     pub enum InsertQualifier with Eq, ToString {
@@ -115,11 +117,10 @@ mod SqlSyntax.Datatypes {
         case ByNameICQ
     }
 
-    // TODO OnConflictClause should be separate
     pub enum InsertValuesClause with Eq, ToString {
-        case ValuesIVC(List[List[Expression]], OnConflictClause)
+        case ValuesIVC(List[List[Expression]])
         case SelectIVC(SelectStmt)
-        case DefaultValuesIVC(OnConflictClause)
+        case DefaultValuesIVC
     }
 
     pub enum ReturningClause with Eq, ToString {
@@ -140,7 +141,28 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum SelectClause with Eq, ToString {
-        case SelectClause
+        case SelectClause(Option[DistinctClause], List[SelectExpr])
+    }
+
+    pub enum DistinctClause with Eq, ToString {
+        case Distinct(Option[List[Expression]])
+        case All
+    }
+
+    pub enum SelectExpr with Eq, ToString {
+        case SelectExpr(Expression, Option[(AsB, String)])
+        case SelectStar(Option[String], StarOptions)
+        case SelectColumns(ColumnExpression)
+    }
+
+    pub enum StarOptions with Eq, ToString {
+        case StarOptions(Option[List[String]], Option[List[(Expression, String)]])
+    }
+
+    pub enum ColumnExpression with Eq, ToString {
+        case ColumnStar(Option[String], StarOptions)
+        case ColumnRegex(String)
+        case ColumnLambda(TODO)
     }
 
     pub enum SqlType with Eq, ToString {

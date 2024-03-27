@@ -60,7 +60,8 @@ mod Test01 {
         let src = InsertStmt(Some(OrIgnoreIQ), UnqualifiedName("edge"), Some(UnqualifiedName("result")), 
                         List#{"from_edge", "to_edge"}, 
                         Some(ByNameICQ), 
-                        ValuesIVC(List#{List#{Literal(Integer(1)), Literal(Integer(2))}}, OnConflictClause(List#{"from_edge", "to_edge"}, None, DoNothing)),
+                        ValuesIVC(List#{List#{Literal(Integer(1)), Literal(Integer(2))}}),
+                        Some(OnConflictClause(List#{"from_edge", "to_edge"}, None, DoNothing)),
                         Some(ReturningClause(true, Nil)));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppInsertStmt(src)))
 

@@ -19,13 +19,16 @@ mod SqlSyntax.Pretty {
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
     use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
-        int32, squotes}
+        dot, char, int32, squotes}
+
+    use SqlSyntax.Datatypes.{TODO}
+    use SqlSyntax.Datatypes.TODO.{TODO}
 
     use SqlSyntax.Datatypes.{Expression, Literal, 
         Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
-        SelectStmt, SelectClause, 
+        SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, ColumnExpression,
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -47,6 +50,10 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
     use SqlSyntax.Datatypes.SelectStmt.{SelectStmt}
     use SqlSyntax.Datatypes.SelectClause.{SelectClause}
+    use SqlSyntax.Datatypes.DistinctClause.{Distinct, All}
+    use SqlSyntax.Datatypes.SelectExpr.{SelectExpr, SelectStar, SelectColumns}
+    use SqlSyntax.Datatypes.StarOptions.{StarOptions}
+    use SqlSyntax.Datatypes.ColumnExpression.{ColumnStar, ColumnRegex, ColumnLambda}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
@@ -64,6 +71,10 @@ mod SqlSyntax.Pretty {
         case None => empty()
     }
 
+    def ppTODO(x: TODO): Doc = match x {
+        case TODO(name) => text("TODO:") <<>> text(name)
+    }
+
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
         case QualifiedName(scm, name) => text(scm ++ "." ++ name)
         case UnqualifiedName(name)    => text(name)
@@ -78,7 +89,7 @@ mod SqlSyntax.Pretty {
         case CreateTable(stmt)  => ppCreateTableStmt(stmt)
         case Drop(stmt)         => ppDropStmt(stmt)
         case Insert(stmt)       => ppInsertStmt(stmt)
-        case Select(_stmt)      => text("Select - TODO")
+        case Select(stmt)      => ppSelectStmt(stmt)
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
@@ -94,7 +105,7 @@ mod SqlSyntax.Pretty {
 
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
         case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
-        case GeneratedColumn(ty, _genAlwaysB) => ppSqlType(ty) <<>> text("TODO")
+        case GeneratedColumn(ty, todo) => ppSqlType(ty) <<>> ppTODO(todo)
     }
 
     def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
@@ -144,19 +155,20 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppInsertStmt(x:  InsertStmt): Doc = match x {
-        case InsertStmt(optInsQual, qname, optAsName, cols, optColQual, valClause, optRetClause) => 
+        case InsertStmt(optInsQual, qname, optAsName, cols, optColQual, valClause, ocClause, optRetClause) => 
             let insQual = someOrEmpty(optInsQual, ppInsertQualifier);
             let asName = someOrEmpty(optAsName, name -> text("AS") <<>> ppQualifiedName(name));
             let colsD = optionalTupled(List.map(text, cols));
             let colQual = someOrEmpty(optColQual, ppInsertColumnQualifier);
+            let onConflict = someOrEmpty(ocClause, ppOnConflictClause);
             let retClause = someOrEmpty(optRetClause, ppInsertReturningClause);
             text("INSERT") <^> insQual <<>> text("INTO") 
                 <<>> ppQualifiedName(qname) 
                 <^> asName 
                 <^> colsD <^> colQual
                 <<>> ppInsertValuesClause(valClause)
+                <^> onConflict
                 <^> retClause
-
     }
 
     def ppInsertQualifier(x: InsertQualifier): Doc = match x {
@@ -171,13 +183,12 @@ mod SqlSyntax.Pretty {
 
 
     def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
-        case ValuesIVC(xss, occ) => {
+        case ValuesIVC(xss)     => {
             let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
-            let vals = optionalIntersperse(text(", "), List.map(ppValuesList, xss));
-            vals <^> ppOnConflictClause(occ)
+            optionalIntersperse(text(", "), List.map(ppValuesList, xss))
         }
         case SelectIVC(selStmt) => ppSelectStmt(selStmt)
-        case DefaultValuesIVC(occ) => text("DEFAULT VALUES") <^> ppOnConflictClause(occ)
+        case DefaultValuesIVC   => text("DEFAULT VALUES")
     }
 
     def ppOnConflictClause(x: OnConflictClause): Doc = match x {
@@ -216,9 +227,48 @@ mod SqlSyntax.Pretty {
     }
 
     def ppSelectClause(x: SelectClause): Doc = match x {
-        case SelectClause => text("TODO")
+        case SelectClause(optDistinct, sels) => {
+            let distinct = someOrEmpty(optDistinct, ppDistinctClause);
+            let selectExprs = intersperse(text(", "), List.map(ppSelectExpr, sels));
+            text("SELECT") <^> distinct <<>> selectExprs
+        }
     }
 
+    def ppDistinctClause(x: DistinctClause): Doc = match x {
+        case Distinct(None)         => text("DISTINCT")
+        case Distinct(Some(exprs))  => text("DISTINCT") <<>> text("ON") <<>> tupled(List.map(ppExpression, exprs))
+        case All                    => text("ALL")
+    }
+
+    def ppSelectExpr(x: SelectExpr): Doc = match x {
+        case SelectExpr(expr, None) => ppExpression(expr) 
+        case SelectExpr(expr, Some(asB, nameAlias)) => 
+            ppExpression(expr) <^> docOrEmpty(asB, text("AS")) <<>> text(nameAlias)
+        case SelectStar(optTable, starOpts) => {
+            let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
+            tableName <^> char('*') <<>> ppStarOptions(starOpts)
+        }
+        case SelectColumns(colExpr) => text("COLUMNS") <<>> parens(ppColumnExpression(colExpr))
+        
+    }
+
+    def ppStarOptions(x: StarOptions): Doc = match x {
+        case StarOptions(optExcludes, optReplaces) => {
+            let excludes = someOrEmpty(optExcludes, xs -> text("EXCLUDE") <<>> tupled(List.map(text, xs)));
+            let makeReplace = match (expr, name) -> ppExpression(expr) <<>> text("AS" ) <<>> text(name); 
+            let replaces = someOrEmpty(optReplaces, xs -> text("REPLACE") <<>> tupled(List.map(makeReplace, xs)));
+            excludes <^> replaces
+        }
+    }
+
+    def ppColumnExpression(x: ColumnExpression): Doc = match x {
+        case ColumnStar(optTable, starOpts) => {
+            let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
+            tableName <^> char('*') <<>> ppStarOptions(starOpts)
+        }
+        case ColumnRegex(regex) => squotes(text(regex))
+        case ColumnLambda(todo) => ppTODO(todo)
+    }
 
     pub def ppSqlType(x: SqlType): Doc = match x {
         case VarcharType => text("VARCHAR")
