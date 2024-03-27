@@ -60,10 +60,17 @@ mod SqlSyntax.Datatypes {
 
     pub enum ColumnSpec with Eq, ToString {
         case Column(SqlType, List[ColumnConstraint])
-        case GeneratedColumn(SqlType, TODO)
+        case GeneratedColumn(Option[SqlType], Option[GeneratedAlways], Expression, Option[VirtualOrStored])
     }
 
-    pub type alias GeneratedAlwaysB = Bool
+    pub enum GeneratedAlways with Eq, ToString {
+        case GeneratedAlways
+    }
+
+    pub enum VirtualOrStored with Eq, ToString {
+        case Virtual
+        case Stored
+    }
 
     pub enum ColumnConstraint with Eq, ToString {
         case PrimaryKeyCC
@@ -142,7 +149,7 @@ mod SqlSyntax.Datatypes {
         case ValuesClause(List[List[Expression]])
     }
     pub enum SelectStmt with Eq, ToString {
-        case SelectStmt(SelectClause, FromClause)
+        case SelectStmt(SelectClause, FromClause, Option[WhereClause], Option[GroupByClause], Option[HavingClause], Option[WindowClause], Option[QualifyClause], Option[OrderByClause], Option[LimitClause])
     }
 
     pub enum SelectClause with Eq, ToString {
@@ -245,6 +252,99 @@ mod SqlSyntax.Datatypes {
         case System
     }
 
+    pub enum WhereClause with Eq, ToString {
+        case WhereClause(Expression)
+    }
+
+    pub enum GroupByClause with Eq, ToString {
+        case GroupBy(List[Grouping])
+        case GroupByAll
+    }
+
+    pub enum Grouping with Eq, ToString {
+        case GroupingExpr(Expression)
+        case GroupingSets(List[List[Expression]])
+        case GroupingSimple(CubeOrRollup, List[Expression])
+    }
+
+    pub enum CubeOrRollup with Eq, ToString {
+        case Cube
+        case Rollup
+    }
+    pub enum HavingClause with Eq, ToString {
+        case HavingClause(Expression)
+    }
+
+    pub enum WindowClause with Eq, ToString {
+        case WindowClause(String, WindowDefinition)
+    }
+
+    pub enum WindowDefinition with Eq, ToString {
+        case WindowDefinition(String, Option[List[Expression]], Option[OrderByClause], Option[FrameSpec])
+    }
+
+    pub enum FrameSpec with Eq, ToString {
+        case FrameSpec(RangeOrRows, FrameBody, Option[WindowExclude])
+    }
+
+    pub enum RangeOrRows with Eq, ToString {
+        case Range
+        case Rows
+    }
+
+    pub enum FrameBody with Eq, ToString {
+        case Between(FrameStart, FrameStop)
+        case UnboundedPreceding
+        case Preceding(Expression)
+        case CurrentRow
+    }
+
+
+    pub enum FrameStart with Eq, ToString {
+        case UnboundedPreceding
+        case Preceding(Expression)
+        case CurrentRow
+        case Following(Expression)
+    }
+
+    pub enum FrameStop with Eq, ToString {
+        case Preceding(Expression)
+        case CurrentRow
+        case Following(Expression)
+        case UnboundedFollowing
+    }
+
+    pub enum WindowExclude with Eq, ToString {
+        case CurrentRow
+        case Group
+        case Ties
+        case NoOthers
+    }
+
+    pub enum QualifyClause with Eq, ToString {
+        case QualifyClause(Expression)
+    }
+
+
+    pub enum OrderByClause with Eq, ToString {
+        case OrderByExprs(List[(Expression, Option[SortOrder], Option[NullsPosition])])
+        case OrderByAll(Option[SortOrder], Option[NullsPosition])
+    }
+
+
+    pub enum SortOrder with Eq, ToString, Order {
+        case Asc
+        case Desc
+    }
+
+    pub enum NullsPosition with Eq, ToString, Order {
+        case NullsFirst
+        case NullsLast
+    }
+
+    pub enum LimitClause with Eq, ToString {
+        case LimitClause(Expression, Option[Expression])
+    }
 
     pub enum SqlType with Eq, ToString {
         case VarcharType

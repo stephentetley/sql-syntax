@@ -33,6 +33,7 @@ mod SqlSyntax.Pretty {
         TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
         TableAlias, TableSample, 
         PercentOrRowCount, SamplingMethod, 
+        WhereClause, QualifyClause, LimitClause, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -73,6 +74,9 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.TableSample.{SizeFirst, FunctionStyle}
     use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, Rows}
     use SqlSyntax.Datatypes.SamplingMethod.{Reservoir, Bernoulli, System}
+    use SqlSyntax.Datatypes.WhereClause.{WhereClause}
+    use SqlSyntax.Datatypes.QualifyClause.{QualifyClause}
+    use SqlSyntax.Datatypes.LimitClause.{LimitClause}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
@@ -124,7 +128,10 @@ mod SqlSyntax.Pretty {
 
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
         case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
-        case GeneratedColumn(ty, todo) => ppSqlType(ty) <<>> ppTODO(todo)
+        case GeneratedColumn(optType, _, _, _) => {
+            let sqltype = someOrEmpty(optType, ppSqlType);
+            sqltype <^> text("TODO")
+        }
     }
 
     def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
@@ -246,8 +253,13 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppSelectStmt(x: SelectStmt): Doc = match x {
-        case SelectStmt(selClause, fromClause) => 
-            ppSelectClause(selClause) <<>> ppFromClause(fromClause)
+        case SelectStmt(selClause, fromClause, optWhere, _, _, _, _, _, optLimit) => {
+            let whereClause = someOrEmpty(optWhere, ppWhereClause);
+            let limitClause = someOrEmpty(optLimit, ppLimitClause);
+            ppSelectClause(selClause) <<>> ppFromClause(fromClause) 
+                <^> whereClause
+                <^> limitClause
+        }
     }
 
     def ppSelectClause(x: SelectClause): Doc = match x {
@@ -394,6 +406,24 @@ mod SqlSyntax.Pretty {
         case Bernoulli  => text("bernoulli")
         case System     => text("system")
     }
+
+
+    def ppWhereClause(x: WhereClause): Doc = match x {
+        case WhereClause(expr) => text("WHERE") <<>> ppExpression(expr)
+    }
+
+
+    def _ppQualifyClause(x: QualifyClause): Doc = match x {
+        case QualifyClause(expr) => text("QUALIFY") <<>> ppExpression(expr)
+    }
+
+    def ppLimitClause(x: LimitClause): Doc = match x {
+        case LimitClause(expr, optOffset) => {
+            let offset = someOrEmpty(optOffset, expr1 -> text("OFFSET") <<>> ppExpression(expr1));
+            text("LIMIT") <<>> ppExpression(expr) <^> offset
+        }
+    }
+
 
     pub def ppSqlType(x: SqlType): Doc = match x {
         case VarcharType => text("VARCHAR")
