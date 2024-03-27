@@ -188,7 +188,40 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum JoinClause with Eq, ToString {
-        case JoinClause(TODO)
+        case JoinClause(TableOrSubquery, Option[JoinDesignation], TableOrSubquery, Option[JoinCondition])
+    }
+
+    pub enum TableOrSubquery with Eq, ToString {
+        case Table(String)
+        case Subquery(SelectStmt)
+    }
+
+
+    pub enum JoinDesignation with Eq, ToString {
+        case Join(Option[NaturalOrAsOf], JoinType)
+        case Positional
+        case Cross
+    }
+
+    pub enum JoinCondition with Eq, ToString {
+        case On(Expression)
+        case Using(List[String])
+    }
+
+    pub enum NaturalOrAsOf with Eq, ToString {
+        case Natural
+        case AsOf
+    }
+
+    pub enum JoinType with Eq, ToString {
+        case InnerJoin
+        case LeftJoin(Option[OuterJoin])
+        case RightJoin(Option[OuterJoin])
+        case FullJoin(Option[OuterJoin])
+    }
+
+    pub enum OuterJoin with Eq, ToString {
+        case OuterJoin
     }
 
     pub enum TableAlias with Eq, ToString {

@@ -29,7 +29,9 @@ mod SqlSyntax.Pretty {
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
         SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, ColumnExpression,
-        ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, TableAlias, TableSample, 
+        ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, 
+        TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
+        TableAlias, TableSample, 
         PercentOrRowCount, SamplingMethod, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
@@ -61,6 +63,12 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.FromExpressionOrJoin.{FromExpression, JoinExpression}
     use SqlSyntax.Datatypes.FromExpression.{TableReference, TableFunction, Subquery, Values}
     use SqlSyntax.Datatypes.JoinClause.{JoinClause}
+    use SqlSyntax.Datatypes.TableOrSubquery.{Table, Subquery}
+    use SqlSyntax.Datatypes.JoinDesignation.{Join, Positional, Cross}
+    use SqlSyntax.Datatypes.JoinCondition.{On, Using}
+    use SqlSyntax.Datatypes.NaturalOrAsOf.{Natural, AsOf}
+    use SqlSyntax.Datatypes.JoinType.{InnerJoin, LeftJoin, RightJoin, FullJoin}
+    use SqlSyntax.Datatypes.OuterJoin.{OuterJoin}
     use SqlSyntax.Datatypes.TableAlias.{TableAlias}
     use SqlSyntax.Datatypes.TableSample.{SizeFirst, FunctionStyle}
     use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, Rows}
@@ -194,7 +202,7 @@ mod SqlSyntax.Pretty {
 
 
     def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
-        case ValuesIVC(vals)     => ppValuesClause(vals)
+        case ValuesIVC(vals)    => ppValuesClause(vals)
         case SelectIVC(selStmt) => ppSelectStmt(selStmt)
         case DefaultValuesIVC   => text("DEFAULT VALUES")
     }
@@ -308,12 +316,49 @@ mod SqlSyntax.Pretty {
     def ppFromExpression(x: FromExpression): Doc = match x {
         case TableReference(qname)          => ppQualifiedName(qname)
         case TableFunction(qname, exprs)    => ppQualifiedName(qname) ++ tupled(List.map(ppExpression, exprs))
-        case Subquery(stmt)                 => parens(ppSelectStmt(stmt))
+        case FromExpression.Subquery(stmt)  => parens(ppSelectStmt(stmt))
         case Values(valsClause)             => parens(ppValuesClause(valsClause))
     }
 
     def ppJoinClause(x: JoinClause): Doc = match x { 
-        case JoinClause(todo) => ppTODO(todo)
+        case JoinClause(tableA, optJoinDes, tableB, optJoinCond) => {
+            let designator = someOrEmpty(optJoinDes, ppJoinDesignation);
+            let joinCondition = someOrEmpty(optJoinCond, ppJoinCondition);
+            ppTableOrSubquery(tableA) <^> designator <<>> text("JOIN") <<>> ppTableOrSubquery(tableB) <^> joinCondition
+        }
+    }
+
+    def ppTableOrSubquery(x: TableOrSubquery): Doc = match x { 
+        case Table(name)    => text(name)
+        case Subquery(stmt) => ppSelectStmt(stmt)
+    }
+
+
+    def ppJoinDesignation(x: JoinDesignation): Doc = match x { 
+        case Join(optNatAsof, joinType) => someOrEmpty(optNatAsof, ppNaturalOrAsOf) <^> ppJoinType(joinType)
+        case Positional => text("POSITIONAL")
+        case Cross      => text("CROSS")
+    }
+
+    def ppJoinCondition(x: JoinCondition): Doc = match x { 
+        case On(expr)       => text("ON") <<>> ppExpression(expr)
+        case Using(cols)    => text("USING") <<>> tupled(List.map(text, cols))
+    }
+
+    def ppNaturalOrAsOf(x: NaturalOrAsOf): Doc = match x { 
+        case Natural    => text("NATURAL")
+        case AsOf       => text("ASOF")
+    }
+
+    def ppJoinType(x: JoinType): Doc = match x { 
+        case InnerJoin      => text("OUTER")
+        case LeftJoin(opt)  => text("LEFT") <^> someOrEmpty(opt, ppOuterJoin)
+        case RightJoin(opt) => text("RIGHT") <^> someOrEmpty(opt, ppOuterJoin)
+        case FullJoin(opt)  => text("FULL") <^> someOrEmpty(opt, ppOuterJoin)
+    }
+
+    def ppOuterJoin(x: OuterJoin): Doc = match x { 
+        case OuterJoin => text("OUTER")
     }
 
     def ppTableAlias(x: TableAlias): Doc = match x {
