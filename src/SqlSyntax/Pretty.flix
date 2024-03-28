@@ -32,70 +32,40 @@ mod SqlSyntax.Pretty {
         ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, 
         TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
         TableAlias, TableSample, 
-        PercentOrRowCount, SamplingMethod, 
+        PercentOrRow, SamplingMethod, 
         WhereClause, 
         GroupByClause, Grouping, CubeOrRollup, 
         HavingClause, 
         WindowClause, WindowDefinition, PartitionByClause, FrameSpec, RangeOrRows, FrameBody, FrameStart, FrameStop, WindowExclude,
-        QualifyClause, OrderByClause, LimitClause, 
+        QualifyClause, 
+        OrderByClause, OrderDesignation, SortOrder, NullsPosition,
+        LimitClause, 
         SqlType}
-    use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
-    use SqlSyntax.Datatypes.Literal.{Integer, Varchar}
     use SqlSyntax.Datatypes.Statement.{CreateTable, Drop, Insert, Select}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
     use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
-    use SqlSyntax.Datatypes.ColumnConstraint.{PrimaryKeyCC, AllowNullCC, UniqueCC, CheckCC, DefaultCC, ReferencesCC, CollateCC}
-    use SqlSyntax.Datatypes.TableConstraint.{PrimaryKeyTC, UniqueTC, CheckTC, ForeignKeyTC}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
-    use SqlSyntax.Datatypes.DropQualifier.{FunctionDQ, IndexDQ, MacroDQ, SchemaDQ, SequenceDQ, TableDQ, ViewDQ, TypeDQ}
-    use SqlSyntax.Datatypes.CascadeOrRestrict.{CascadeCR, RestrictCR}
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
-    use SqlSyntax.Datatypes.InsertQualifier.{OrReplaceIQ, OrIgnoreIQ}
-    use SqlSyntax.Datatypes.InsertColumnQualifier.{ByPositionICQ, ByNameICQ}
-    use SqlSyntax.Datatypes.InsertValuesClause.{ValuesIVC, SelectIVC, DefaultValuesIVC}
     use SqlSyntax.Datatypes.ValuesClause.{ValuesClause}
     use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
     use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
-    use SqlSyntax.Datatypes.DoUpdateOrDoNothing.{DoUpdate, DoNothing}
     use SqlSyntax.Datatypes.SelectStmt.{SelectStmt}
     use SqlSyntax.Datatypes.SelectClause.{SelectClause}
     use SqlSyntax.Datatypes.DistinctClause.{Distinct, All}
-    use SqlSyntax.Datatypes.SelectExpr.{SelectExpr, SelectStar, SelectColumns}
     use SqlSyntax.Datatypes.StarOptions.{StarOptions}
-    use SqlSyntax.Datatypes.ColumnExpression.{ColumnStar, ColumnRegex, ColumnLambda}
     use SqlSyntax.Datatypes.FromClause.{FromClause}
-    use SqlSyntax.Datatypes.FromExpressionOrJoin.{FromExpression, JoinExpression}
-    use SqlSyntax.Datatypes.FromExpression.{TableReference, TableFunction, Subquery, Values}
     use SqlSyntax.Datatypes.JoinClause.{JoinClause}
-    use SqlSyntax.Datatypes.TableOrSubquery.{Table, Subquery}
-    use SqlSyntax.Datatypes.JoinDesignation.{Join, Positional, Cross}
-    use SqlSyntax.Datatypes.JoinCondition.{On, Using}
-    use SqlSyntax.Datatypes.NaturalOrAsOf.{Natural, AsOf}
-    use SqlSyntax.Datatypes.JoinType.{InnerJoin, LeftJoin, RightJoin, FullJoin}
     use SqlSyntax.Datatypes.OuterJoin.{OuterJoin}
     use SqlSyntax.Datatypes.TableAlias.{TableAlias}
-    use SqlSyntax.Datatypes.TableSample.{SizeFirst, FunctionStyle}
-    use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, RowCount}
-    use SqlSyntax.Datatypes.SamplingMethod.{Reservoir, Bernoulli, System}
     use SqlSyntax.Datatypes.WhereClause.{WhereClause}
-    use SqlSyntax.Datatypes.GroupByClause.{GroupBy, GroupByAll}
-    use SqlSyntax.Datatypes.Grouping.{GroupingExpr, GroupingSets, GroupingSimple}
-    use SqlSyntax.Datatypes.CubeOrRollup.{Cube, Rollup}
     use SqlSyntax.Datatypes.HavingClause.{HavingClause}
     use SqlSyntax.Datatypes.WindowClause.{WindowClause}
     use SqlSyntax.Datatypes.WindowDefinition.{WindowDefinition}
     use SqlSyntax.Datatypes.PartitionByClause.{PartitionByClause}
     use SqlSyntax.Datatypes.FrameSpec.{FrameSpec}
-    use SqlSyntax.Datatypes.RangeOrRows.{Range, Rows}
-    // use SqlSyntax.Datatypes.FrameBody.{Between, UnboundedPreceding, Preceding, CurrentRow}
-    // use SqlSyntax.Datatypes.FrameStart.{UnboundedPreceding, Preceding, CurrentRow, Following}
-    use SqlSyntax.Datatypes.FrameStop.{Preceding, CurrentRow, Following, UnboundedFollowing}
-    use SqlSyntax.Datatypes.WindowExclude.{CurrentRow, Group, Ties, NoOthers}
     use SqlSyntax.Datatypes.QualifyClause.{QualifyClause}
-    use SqlSyntax.Datatypes.OrderByClause.{OrderByExprs, OrderByAll}
     use SqlSyntax.Datatypes.LimitClause.{LimitClause}
-    use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
     // TEMP - add to flix-pretty?
@@ -120,8 +90,8 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
-        case QualifiedName(scm, name) => text(scm ++ "." ++ name)
-        case UnqualifiedName(name)    => text(name)
+        case QualifiedName.QualifiedName(scm, name) => text(scm ++ "." ++ name)
+        case QualifiedName.UnqualifiedName(name)    => text(name)
     }
 
 
@@ -133,7 +103,7 @@ mod SqlSyntax.Pretty {
         case CreateTable(stmt)  => ppCreateTableStmt(stmt)
         case Drop(stmt)         => ppDropStmt(stmt)
         case Insert(stmt)       => ppInsertStmt(stmt)
-        case Select(stmt)      => ppSelectStmt(stmt)
+        case Select(stmt)       => ppSelectStmt(stmt)
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
@@ -151,7 +121,7 @@ mod SqlSyntax.Pretty {
         case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
         case GeneratedColumn(optType, _, _, _) => {
             let sqltype = someOrEmpty(optType, ppSqlType);
-            sqltype <^> text("TODO")
+            sqltype <^> ppTODO(TODO("GeneratedColumn"))
         }
     }
 
@@ -159,21 +129,21 @@ mod SqlSyntax.Pretty {
         intersperse(space(), List.map(ppColumnConstraint, xs))
 
     def ppColumnConstraint(x: ColumnConstraint): Doc = match x {
-        case PrimaryKeyCC               => text("PRIMARY KEY")
-        case AllowNullCC(b)             => if (b) text("NULL") else text("NOT NULL")
-        case UniqueCC                   => text("UNIQUE")
-        case CheckCC(expr)              => text("CHECK") <<>> parens(ppExpression(expr)) 
-        case DefaultCC(Left(lit))       => text("DEFAULT") <<>> ppLiteral(lit)
-        case DefaultCC(Right(expr))     => text("DEFAULT") <<>> parens(ppExpression(expr))
-        case ReferencesCC(ft, names)    => text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, names))
-        case CollateCC(cname)           => text("COLLATE") <<>> text(cname)
+        case ColumnConstraint.PrimaryKey            => text("PRIMARY KEY")
+        case ColumnConstraint.AllowNull(b)          => if (b) text("NULL") else text("NOT NULL")
+        case ColumnConstraint.Unique                => text("UNIQUE")
+        case ColumnConstraint.Check(expr)           => text("CHECK") <<>> parens(ppExpression(expr)) 
+        case ColumnConstraint.Default(Left(lit))    => text("DEFAULT") <<>> ppLiteral(lit)
+        case ColumnConstraint.Default(Right(expr))  => text("DEFAULT") <<>> parens(ppExpression(expr))
+        case ColumnConstraint.References(ft, names) => text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, names))
+        case ColumnConstraint.Collate(cname)        => text("COLLATE") <<>> text(cname)
     }
 
     def ppTableConstraint(x: TableConstraint): Doc = match x {
-        case PrimaryKeyTC(cols)             => text("PRIMARY KEY") <<>> tupled(List.map(text, cols))
-        case UniqueTC(cols)                 => text("UNIQUE") <<>> tupled(List.map(text, cols))
-        case CheckTC(expr)                  => text("CHECK") <<>> parens(ppExpression(expr)) 
-        case ForeignKeyTC(cols, ft, fcols)  => 
+        case TableConstraint.PrimaryKey(cols)               => text("PRIMARY KEY") <<>> tupled(List.map(text, cols))
+        case TableConstraint.Unique(cols)                   => text("UNIQUE") <<>> tupled(List.map(text, cols))
+        case TableConstraint.Check(expr)                    => text("CHECK") <<>> parens(ppExpression(expr)) 
+        case TableConstraint.ForeignKey(cols, ft, fcols)    => 
             text("FOREIGN KEY") <<>> tupled(List.map(text, cols)) <<>> text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, fcols))
     }
 
@@ -186,19 +156,19 @@ mod SqlSyntax.Pretty {
     }
 
     def ppDropQualifier(x: DropQualifier): Doc = match x {
-        case FunctionDQ => text("FUNCTION")
-        case IndexDQ    => text("SEQUENCE")
-        case MacroDQ(b) => text("MACRO") <^> docOrEmpty(b, text("TABLE"))
-        case SchemaDQ   => text("SCHEMA")
-        case SequenceDQ => text("SEQUENCE")
-        case TableDQ    => text("TABLE")
-        case ViewDQ     => text("VIEW")
-        case TypeDQ     => text("TYPE")
+        case DropQualifier.Function => text("FUNCTION")
+        case DropQualifier.Index    => text("SEQUENCE")
+        case DropQualifier.Macro(b) => text("MACRO") <^> docOrEmpty(b, text("TABLE"))
+        case DropQualifier.Schema   => text("SCHEMA")
+        case DropQualifier.Sequence => text("SEQUENCE")
+        case DropQualifier.Table    => text("TABLE")
+        case DropQualifier.View     => text("VIEW")
+        case DropQualifier.Type     => text("TYPE")
     }
     
     def ppCascadeOrRestrict(x: CascadeOrRestrict): Doc = match x {
-        case CascadeCR  => text("CASCADE")
-        case RestrictCR => text("RESTRICT")
+        case CascadeOrRestrict.Cascade  => text("CASCADE")
+        case CascadeOrRestrict.Restrict => text("RESTRICT")
     }
 
     pub def ppInsertStmt(x:  InsertStmt): Doc = match x {
@@ -219,20 +189,20 @@ mod SqlSyntax.Pretty {
     }
 
     def ppInsertQualifier(x: InsertQualifier): Doc = match x {
-        case OrReplaceIQ    => text("OR REPLACE")
-        case OrIgnoreIQ     => text("OR IGNORE")
+        case InsertQualifier.OrReplace  => text("OR REPLACE")
+        case InsertQualifier.OrIgnore   => text("OR IGNORE")
     }
 
     def ppInsertColumnQualifier(x: InsertColumnQualifier): Doc = match x {
-        case ByPositionICQ  => text("BY POSITION")
-        case ByNameICQ      => text("BY NAME")
+        case InsertColumnQualifier.ByPosition   => text("BY POSITION")
+        case InsertColumnQualifier.ByName       => text("BY NAME")
     }
 
 
     def ppInsertValuesClause(x: InsertValuesClause): Doc = match x {
-        case ValuesIVC(vals)    => ppValuesClause(vals)
-        case SelectIVC(selStmt) => ppSelectStmt(selStmt)
-        case DefaultValuesIVC   => text("DEFAULT VALUES")
+        case InsertValuesClause.Values(vals)    => ppValuesClause(vals)
+        case InsertValuesClause.Select(selStmt) => ppSelectStmt(selStmt)
+        case InsertValuesClause.DefaultValues   => text("DEFAULT VALUES")
     }
 
     def ppValuesClause(x: ValuesClause): Doc = match x {
@@ -252,12 +222,12 @@ mod SqlSyntax.Pretty {
 
 
     def ppDoUpdateOrDoNothing(x: DoUpdateOrDoNothing): Doc = match x {
-        case DoUpdate(setExprs, optWhereExpr) => {
+        case DoUpdateOrDoNothing.DoUpdate(setExprs, optWhereExpr)   => {
             let setCols = commaSpaceSep(List.map(match (col, expr) -> text(col) <<>> equals() <<>> ppExpression(expr), setExprs));
             let whereExpr = someOrEmpty(optWhereExpr, expr -> text("WHERE") <<>> ppExpression(expr));
             text("DO UPDATE") <<>> text("SET") <<>> setCols <^> whereExpr
         }
-        case DoNothing => text("DO NOTHING")
+        case DoUpdateOrDoNothing.DoNothing                          => text("DO NOTHING")
     }
 
     def ppInsertReturningClause(x: ReturningClause): Doc = match x {
@@ -302,14 +272,14 @@ mod SqlSyntax.Pretty {
     }
 
     def ppSelectExpr(x: SelectExpr): Doc = match x {
-        case SelectExpr(expr, None) => ppExpression(expr) 
-        case SelectExpr(expr, Some(asB, nameAlias)) => 
+        case SelectExpr.SelectExpr(expr, None)                  => ppExpression(expr) 
+        case SelectExpr.SelectExpr(expr, Some(asB, nameAlias))  => 
             ppExpression(expr) <^> docOrEmpty(asB, text("AS")) <<>> text(nameAlias)
-        case SelectStar(optTable, starOpts) => {
+        case SelectExpr.SelectStar(optTable, starOpts)          => {
             let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
             tableName <^> char('*') <<>> ppStarOptions(starOpts)
         }
-        case SelectColumns(colExpr) => text("COLUMNS") <<>> parens(ppColumnExpression(colExpr))
+        case SelectExpr.SelectColumns(colExpr)                  => text("COLUMNS") <<>> parens(ppColumnExpression(colExpr))
         
     }
 
@@ -323,12 +293,12 @@ mod SqlSyntax.Pretty {
     }
 
     def ppColumnExpression(x: ColumnExpression): Doc = match x {
-        case ColumnStar(optTable, starOpts) => {
+        case ColumnExpression.ColumnStar(optTable, starOpts)    => {
             let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
             tableName <^> char('*') <<>> ppStarOptions(starOpts)
         }
-        case ColumnRegex(regex) => squotes(text(regex))
-        case ColumnLambda(todo) => ppTODO(todo)
+        case ColumnExpression.ColumnRegex(regex)                => squotes(text(regex))
+        case ColumnExpression.ColumnLambda(todo)                => ppTODO(todo)
     }
 
     def ppFromClause(x: FromClause): Doc = match x {
@@ -339,22 +309,22 @@ mod SqlSyntax.Pretty {
     }
 
     def ppFromExpressionOrJoin(x: FromExpressionOrJoin): Doc = match x {
-        case FromExpression(expr, optAlias, optSample) => {
+        case FromExpressionOrJoin.FromExpression(expr, optAlias, optSample) => {
             let tableAlias = someOrEmpty(optAlias, ppTableAlias);
             let sample = someOrEmpty(optSample, ppTableSample);
             ppFromExpression(expr) <^> tableAlias <^> sample
         }
-        case JoinExpression(parensB, joinClause, optAlias) => {
+        case FromExpressionOrJoin.Join(parensB, joinClause, optAlias) => {
             let joinAlias = someOrEmpty(optAlias, s -> text("AS") <<>> text(s));
             conditionalParens(parensB, ppJoinClause(joinClause) <^> joinAlias)
         }
     }
 
     def ppFromExpression(x: FromExpression): Doc = match x {
-        case TableReference(qname)          => ppQualifiedName(qname)
-        case TableFunction(qname, exprs)    => ppQualifiedName(qname) ++ tupled(List.map(ppExpression, exprs))
-        case FromExpression.Subquery(stmt)  => parens(ppSelectStmt(stmt))
-        case Values(valsClause)             => parens(ppValuesClause(valsClause))
+        case FromExpression.TableReference(qname)       => ppQualifiedName(qname)
+        case FromExpression.TableFunction(qname, exprs) => ppQualifiedName(qname) ++ tupled(List.map(ppExpression, exprs))
+        case FromExpression.Subquery(stmt)              => parens(ppSelectStmt(stmt))
+        case FromExpression.Values(valsClause)          => parens(ppValuesClause(valsClause))
     }
 
     def ppJoinClause(x: JoinClause): Doc = match x { 
@@ -366,32 +336,32 @@ mod SqlSyntax.Pretty {
     }
 
     def ppTableOrSubquery(x: TableOrSubquery): Doc = match x { 
-        case Table(name)    => text(name)
-        case Subquery(stmt) => ppSelectStmt(stmt)
+        case TableOrSubquery.Table(name)    => text(name)
+        case TableOrSubquery.Subquery(stmt) => ppSelectStmt(stmt)
     }
 
 
     def ppJoinDesignation(x: JoinDesignation): Doc = match x { 
-        case Join(optNatAsof, joinType) => someOrEmpty(optNatAsof, ppNaturalOrAsOf) <^> ppJoinType(joinType)
-        case Positional => text("POSITIONAL")
-        case Cross      => text("CROSS")
+        case JoinDesignation.Join(optNatAsof, joinType) => someOrEmpty(optNatAsof, ppNaturalOrAsOf) <^> ppJoinType(joinType)
+        case JoinDesignation.Positional                 => text("POSITIONAL")
+        case JoinDesignation.Cross                      => text("CROSS")
     }
 
     def ppJoinCondition(x: JoinCondition): Doc = match x { 
-        case On(expr)       => text("ON") <<>> ppExpression(expr)
-        case Using(cols)    => text("USING") <<>> tupled(List.map(text, cols))
+        case JoinCondition.On(expr)     => text("ON") <<>> ppExpression(expr)
+        case JoinCondition.Using(cols)  => text("USING") <<>> tupled(List.map(text, cols))
     }
 
     def ppNaturalOrAsOf(x: NaturalOrAsOf): Doc = match x { 
-        case Natural    => text("NATURAL")
-        case AsOf       => text("ASOF")
+        case NaturalOrAsOf.Natural    => text("NATURAL")
+        case NaturalOrAsOf.AsOf       => text("ASOF")
     }
 
     def ppJoinType(x: JoinType): Doc = match x { 
-        case InnerJoin      => text("OUTER")
-        case LeftJoin(opt)  => text("LEFT") <^> someOrEmpty(opt, ppOuterJoin)
-        case RightJoin(opt) => text("RIGHT") <^> someOrEmpty(opt, ppOuterJoin)
-        case FullJoin(opt)  => text("FULL") <^> someOrEmpty(opt, ppOuterJoin)
+        case JoinType.Inner         => text("OUTER")
+        case JoinType.Left(opt)     => text("LEFT") <^> someOrEmpty(opt, ppOuterJoin)
+        case JoinType.Right(opt)    => text("RIGHT") <^> someOrEmpty(opt, ppOuterJoin)
+        case JoinType.Full(opt)     => text("FULL") <^> someOrEmpty(opt, ppOuterJoin)
     }
 
     def ppOuterJoin(x: OuterJoin): Doc = match x { 
@@ -406,13 +376,13 @@ mod SqlSyntax.Pretty {
     }
 
     def ppTableSample(x: TableSample): Doc = match x { 
-        case SizeFirst(sz, optUnit, optMethod) => {
+        case TableSample.SizeFirst(sz, optUnit, optMethod)              => {
             let sampleUnit = someOrEmpty(optUnit, ppPercentOrRowCount);
             let sampleMethod = someOrEmpty(optMethod, 
                 match (s, optCount) -> parens(ppSamplingMethod(s) <^> someOrEmpty(optCount, i -> comma() <<>> int32(i))));
             int32(sz) <^> sampleUnit <^> sampleMethod
         }
-        case FunctionStyle(optMethod, sz, optUnit, optSeed) => {
+        case TableSample.FunctionStyle(optMethod, sz, optUnit, optSeed) => {
             let sampleMethod = someOrEmpty(optMethod, ppSamplingMethod);
             let sampleUnit = someOrEmpty(optUnit, ppPercentOrRowCount);
             let seed = someOrEmpty(optSeed, i -> text("REPEATABLE") <<>> parens(int32(i)));
@@ -421,15 +391,15 @@ mod SqlSyntax.Pretty {
     }
 
 
-    def ppPercentOrRowCount(x: PercentOrRowCount): Doc = match x {
-        case Percent(b) => if (b) char('%') else text("PERCENT")
-        case RowCount   => text("ROWS")
+    def ppPercentOrRowCount(x: PercentOrRow): Doc = match x {
+        case PercentOrRow.Percent(b) => if (b) char('%') else text("PERCENT")
+        case PercentOrRow.Row   => text("ROWS")
     }
 
     def ppSamplingMethod(x: SamplingMethod): Doc = match x {
-        case Reservoir  => text("reservoir")
-        case Bernoulli  => text("bernoulli")
-        case System     => text("system")
+        case SamplingMethod.Reservoir   => text("reservoir")
+        case SamplingMethod.Bernoulli   => text("bernoulli")
+        case SamplingMethod.System      => text("system")
     }
 
 
@@ -439,19 +409,19 @@ mod SqlSyntax.Pretty {
 
 
     def ppGroupByClause(x: GroupByClause): Doc = match x {
-        case GroupBy(xs)    => text("GROUP BY") <<>> commaSpaceSep(List.map(ppGrouping, xs))
-        case GroupByAll     => text("GROUP BY") <<>> text("ALL")
+        case GroupByClause.GroupBy(xs)  => text("GROUP BY") <<>> commaSpaceSep(List.map(ppGrouping, xs))
+        case GroupByClause.GroupByAll   => text("GROUP BY") <<>> text("ALL")
     }
 
     def ppGrouping(x: Grouping): Doc = match x {
-        case GroupingExpr(expr) => ppExpression(expr)
-        case GroupingSets(xss)  => tupled(List.map(tupled, List.map(List.map(ppExpression), xss)))
-        case GroupingSimple(cor, exprs) => ppCubeOrRollup(cor) <<>> tupled(List.map(ppExpression, exprs))
+        case Grouping.GroupingExpr(expr)            => ppExpression(expr)
+        case Grouping.GroupingSets(xss)             => tupled(List.map(tupled, List.map(List.map(ppExpression), xss)))
+        case Grouping.GroupingSimple(cor, exprs)    => ppCubeOrRollup(cor) <<>> tupled(List.map(ppExpression, exprs))
     }
 
     def ppCubeOrRollup(x: CubeOrRollup): Doc = match x {
-        case Cube   => text("CUBE")
-        case Rollup => text("ROLLUP")
+        case CubeOrRollup.Cube   => text("CUBE")
+        case CubeOrRollup.Rollup => text("ROLLUP")
     }
 
     def ppHavingClause(x: HavingClause): Doc = match x {
@@ -487,8 +457,8 @@ mod SqlSyntax.Pretty {
     }
 
     def ppRangeOrRows(x: RangeOrRows): Doc = match x {
-        case Range  => text("RANGE")
-        case Rows   => text("ROWS")
+        case RangeOrRows.Range  => text("RANGE")
+        case RangeOrRows.Rows   => text("ROWS")
     }
 
     def ppFrameBody(x: FrameBody): Doc = match x {
@@ -515,10 +485,10 @@ mod SqlSyntax.Pretty {
     }
 
     def ppWindowExclude(x: WindowExclude): Doc = text("EXCLUDE") <<>> match x {
-        case CurrentRow => text("CURRENT ROW")
-        case Group      => text("GROUP")
-        case Ties       => text("TIES")
-        case NoOthers   => text("NO OTHERS")
+        case WindowExclude.CurrentRow   => text("CURRENT ROW")
+        case WindowExclude.Group        => text("GROUP")
+        case WindowExclude.Ties         => text("TIES")
+        case WindowExclude.NoOthers     => text("NO OTHERS")
     }
 
     def ppQualifyClause(x: QualifyClause): Doc = match x {
@@ -526,8 +496,30 @@ mod SqlSyntax.Pretty {
     }
 
     def ppOrderByClause(x: OrderByClause): Doc = match x {
-        case OrderByExprs(_xs) => ppTODO(TODO("OrderByExprs"))
-        case OrderByAll(_optSortOrder, _optNullsPos) => ppTODO(TODO("OrderByAll"))
+        case OrderByClause.OrderByExprs(xs)      => { 
+            let makeExprOrdering = match (expr, orderDes) -> ppExpression(expr) <^> ppOrderDesignation(orderDes);
+            commaSpaceSep(List.map(makeExprOrdering, xs))
+        }
+        case OrderByClause.OrderByAll(orderDes)  => text("ALL") <^> ppOrderDesignation(orderDes)
+    }
+
+    def ppOrderDesignation(x: OrderDesignation): Doc = match x {
+        case OrderDesignation.OrderDesignation(optSortOrder, optNullsPosition) => {
+            let order = someOrEmpty(optSortOrder, ppSortOrder);
+            let nullsPos = someOrEmpty(optNullsPosition, ppNullsPosition);
+            order <^> nullsPos
+        }
+
+    }
+
+    def ppSortOrder(x: SortOrder): Doc = match x {
+        case SortOrder.Asc  => text("ASC")
+        case SortOrder.Desc => text("DESC")
+    }
+
+    def ppNullsPosition(x: NullsPosition): Doc = match x {
+        case NullsPosition.First    => text("FIRST")
+        case NullsPosition.Last     => text("LAST")
     }
 
     def ppLimitClause(x: LimitClause): Doc = match x {
@@ -539,13 +531,13 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppSqlType(x: SqlType): Doc = match x {
-        case VarcharType => text("VARCHAR")
-        case IntegerType => text("INTEGER")
+        case SqlType.Varchar => text("VARCHAR")
+        case SqlType.Integer => text("INTEGER")
     }
 
     pub def ppLiteral(x: Literal): Doc = match x {
-        case Integer(i) => int32(i)
-        case Varchar(s) => squotes(text(s))
+        case Literal.Integer(i) => int32(i)
+        case Literal.Varchar(s) => squotes(text(s))
     }
 
 }

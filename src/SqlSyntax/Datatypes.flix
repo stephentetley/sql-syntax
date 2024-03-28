@@ -73,20 +73,20 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum ColumnConstraint with Eq, ToString {
-        case PrimaryKeyCC
-        case AllowNullCC(Bool)
-        case UniqueCC
-        case CheckCC(Expression)
-        case DefaultCC(Either[Literal, Expression])      // TODO left should be literal
-        case ReferencesCC(String, List[String])
-        case CollateCC(String)
+        case PrimaryKey
+        case AllowNull(Bool)
+        case Unique
+        case Check(Expression)
+        case Default(Either[Literal, Expression])      // TODO left should be literal
+        case References(String, List[String])
+        case Collate(String)
     }
 
     pub enum TableConstraint with Eq, ToString {
-        case PrimaryKeyTC(List[String])
-        case UniqueTC(List[String])
-        case CheckTC(Expression)
-        case ForeignKeyTC(List[String], String, List[String])
+        case PrimaryKey(List[String])
+        case Unique(List[String])
+        case Check(Expression)
+        case ForeignKey(List[String], String, List[String])
     }
 
 
@@ -95,19 +95,19 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum DropQualifier with Eq, ToString {
-        case FunctionDQ
-        case IndexDQ
-        case MacroDQ(TableB)
-        case SchemaDQ
-        case SequenceDQ
-        case TableDQ
-        case ViewDQ
-        case TypeDQ
+        case Function
+        case Index
+        case Macro(TableB)
+        case Schema
+        case Sequence
+        case Table
+        case View
+        case Type
     }
 
     pub enum CascadeOrRestrict with Eq, ToString {
-        case CascadeCR
-        case RestrictCR
+        case Cascade
+        case Restrict
     }
 
 
@@ -116,20 +116,20 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum InsertQualifier with Eq, ToString {
-        case OrReplaceIQ
-        case OrIgnoreIQ
+        case OrReplace
+        case OrIgnore
     }
 
     pub enum InsertColumnQualifier with Eq, ToString {
-        case ByPositionICQ
-        case ByNameICQ
+        case ByPosition
+        case ByName
     }
 
 
     pub enum InsertValuesClause with Eq, ToString {
-        case ValuesIVC(ValuesClause)
-        case SelectIVC(SelectStmt)
-        case DefaultValuesIVC
+        case Values(ValuesClause)
+        case Select(SelectStmt)
+        case DefaultValues
     }
 
     pub enum ReturningClause with Eq, ToString {
@@ -183,7 +183,7 @@ mod SqlSyntax.Datatypes {
 
     pub enum FromExpressionOrJoin with Eq, ToString {
         case FromExpression(FromExpression, Option[TableAlias], Option[TableSample])
-        case JoinExpression(ParensB, JoinClause, Option[String])
+        case Join(ParensB, JoinClause, Option[String])
     }
 
 
@@ -221,10 +221,10 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum JoinType with Eq, ToString {
-        case InnerJoin
-        case LeftJoin(Option[OuterJoin])
-        case RightJoin(Option[OuterJoin])
-        case FullJoin(Option[OuterJoin])
+        case Inner
+        case Left(Option[OuterJoin])
+        case Right(Option[OuterJoin])
+        case Full(Option[OuterJoin])
     }
 
     pub enum OuterJoin with Eq, ToString {
@@ -236,14 +236,14 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum TableSample with Eq, ToString {
-        case SizeFirst(Int32, Option[PercentOrRowCount], Option[(SamplingMethod, Option[Int32])])
-        case FunctionStyle(Option[SamplingMethod], Int32, Option[PercentOrRowCount], Option[Int32])
+        case SizeFirst(Int32, Option[PercentOrRow], Option[(SamplingMethod, Option[Int32])])
+        case FunctionStyle(Option[SamplingMethod], Int32, Option[PercentOrRow], Option[Int32])
     }
 
     // `Precent(true)` to show as `%`
-    pub enum PercentOrRowCount with Eq, ToString {
+    pub enum PercentOrRow with Eq, ToString {
         case Percent(AsSymbolB)
-        case RowCount
+        case Row
     }
 
     pub enum SamplingMethod with Eq, ToString {
@@ -331,10 +331,13 @@ mod SqlSyntax.Datatypes {
 
 
     pub enum OrderByClause with Eq, ToString {
-        case OrderByExprs(List[(Expression, Option[SortOrder], Option[NullsPosition])])
-        case OrderByAll(Option[SortOrder], Option[NullsPosition])
+        case OrderByExprs(List[(Expression, OrderDesignation)])
+        case OrderByAll(OrderDesignation)
     }
 
+    pub enum OrderDesignation with Eq, ToString {
+        case OrderDesignation(Option[SortOrder], Option[NullsPosition])
+    }
 
     pub enum SortOrder with Eq, ToString, Order {
         case Asc
@@ -342,8 +345,8 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum NullsPosition with Eq, ToString, Order {
-        case NullsFirst
-        case NullsLast
+        case First
+        case Last
     }
 
     pub enum LimitClause with Eq, ToString {
@@ -351,8 +354,8 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum SqlType with Eq, ToString {
-        case VarcharType
-        case IntegerType
+        case Varchar
+        case Integer
     }
 
 
