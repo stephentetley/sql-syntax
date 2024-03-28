@@ -27,6 +27,11 @@ mod SqlSyntax.Datatypes {
         case NoAs
     }
 
+    pub enum ShowColumn with Eq, ToString {
+        case ShowColumn
+        case NoColumn
+    }
+
     pub enum QualifiedName with Eq, ToString {
         case QualifiedName(String, String)
         case UnqualifiedName(String)
@@ -52,10 +57,35 @@ mod SqlSyntax.Datatypes {
 
     // Columns and primary keys
     pub enum Statement with Eq, ToString {
+        case AlterTable(AlterTableStmt)
         case CreateTable(CreateTableStmt)
         case Drop(DropStmt)
         case Insert(InsertStmt)
         case Select(SelectStmt)
+    }
+
+    pub enum AlterTableStmt with Eq, ToString {
+        case AlterTableStmt(QualifiedName, AlterTableClause)
+    }
+
+    pub enum AlterTableClause with Eq, ToString {
+        case Add(ShowColumn, Option[IfNotExists], String, SqlType, List[ColumnConstraint])
+        case Drop(ShowColumn, Option[IfExists], String)
+        case Alter(ShowColumn, String, AlterColumnOptions)
+        case Rename(ShowColumn, String, String)
+        case RenameTo(String)
+    }
+
+    pub enum AlterColumnOptions with Eq, ToString {
+        case SetData(ShowSetData, SqlType, Option[String], Option[Expression])
+        case SetDefault(Expression)
+        case DropDefault
+    }
+
+
+    pub enum ShowSetData with Eq, ToString {
+        case ShowSetData
+        case DontShow
     }
 
     pub enum CreateTableStmt with Eq, ToString {

@@ -22,10 +22,11 @@ mod SqlSyntax.Pretty {
         dot, char, int32, squotes, conditionalParens}
 
 
-    use SqlSyntax.Datatypes.{ShowParens, ShowAs, 
+    use SqlSyntax.Datatypes.{ShowParens, ShowAs, ShowColumn,
         Expression, Literal, 
         CaseStmt,
         Statement, 
+        AlterTableStmt, AlterTableClause, AlterColumnOptions, ShowSetData,
         CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         DropStmt, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
@@ -70,6 +71,11 @@ mod SqlSyntax.Pretty {
         case ShowAs.NoAs    => empty()
     }
 
+    def ppShowColumn(x: ShowColumn): Doc = match x {
+        case ShowColumn.ShowColumn  => text("COLUMN")
+        case ShowColumn.NoColumn    => empty() 
+    }
+
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
         case QualifiedName.QualifiedName(scm, name) => text(scm ++ "." ++ name)
         case QualifiedName.UnqualifiedName(name)    => text(name)
@@ -100,11 +106,54 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
+        case Statement.AlterTable(stmt)     => ppAlterTableStmt(stmt)
         case Statement.CreateTable(stmt)    => ppCreateTableStmt(stmt)
         case Statement.Drop(stmt)           => ppDropStmt(stmt)
         case Statement.Insert(stmt)         => ppInsertStmt(stmt)
         case Statement.Select(stmt)         => ppSelectStmt(stmt)
     }
+
+
+    pub def ppAlterTableStmt(x: AlterTableStmt): Doc= match x {
+        case AlterTableStmt.AlterTableStmt(qname, alterClause) => 
+            text("ALTER TABLE") <<>> ppQualifiedName(qname) <<>> ppAlterTableClause(alterClause)
+    }
+
+    def ppAlterTableClause(x: AlterTableClause): Doc = match x {
+        case AlterTableClause.Add(showColumn, optIfNotExists, name, sqltype, colConstraints) => {
+            let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
+            let columnConstraints = sep(List.map(ppColumnConstraint, colConstraints));
+            text("ADD") <^> ppShowColumn(showColumn) <^> ifNotExists <^> text(name) <<>> ppSqlType(sqltype) <^> columnConstraints
+        }
+        case AlterTableClause.Drop(showColumn, optIfExists, name)   => {
+            let ifExists = someOrEmpty(optIfExists, ppIfExists);
+            text("DROP") <^> ppShowColumn(showColumn) <^> ifExists <^> text(name)
+        }
+        case AlterTableClause.Alter(showColumn, name, alterOpts)     => 
+            text("ALTER") <^> ppShowColumn(showColumn) <^> text(name) <<>> ppAlterColumnOptions(alterOpts)
+        case AlterTableClause.Rename(showColumn, olds, news)        =>
+            text("RENAME") <^> ppShowColumn(showColumn) <^> text(olds) <<>> text("TO") <<>> text(news)
+        case AlterTableClause.RenameTo(name)                        => 
+            text("RENAME TO") <<>> text(name)
+    }
+
+
+
+    def ppAlterColumnOptions(x: AlterColumnOptions): Doc = match x {
+        case AlterColumnOptions.SetData(setData, sqltype, optCollationName, optUsing) => {
+            let collate = someOrEmpty(optCollationName, s -> text("COLLATE") <<>> text(s));
+            let usingExpr = someOrEmpty(optUsing, expr -> text("Using") <<>> ppExpression(expr));
+            ppShowSetData(setData) <^> text("TYPE") <<>> ppSqlType(sqltype) <^> collate <^> usingExpr
+        }
+        case AlterColumnOptions.SetDefault(expr)       => text("SET DEFAULT") <<>> ppExpression(expr)
+        case AlterColumnOptions.DropDefault            => text("DROP DEFAULT")
+    }
+
+    def ppShowSetData(x: ShowSetData): Doc = match x {
+        case ShowSetData.ShowSetData    => text("SET DATA")
+        case ShowSetData.DontShow       => empty()
+    }
+
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
         case CreateTableStmt.CreateTableStmt(optReplace, tempB, optIfNotExists, qname, cols, tblConstrs) => 
@@ -135,8 +184,8 @@ mod SqlSyntax.Pretty {
     }
 
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
-        case ColumnSpec.Column(ty, constrs)     => { 
-            let columnConstraints = intersperse(space(), List.map(ppColumnConstraint, constrs));
+        case ColumnSpec.Column(ty, colConstraints)     => { 
+            let columnConstraints = sep(List.map(ppColumnConstraint, colConstraints));
             ppSqlType(ty) <^> columnConstraints
         }
         case ColumnSpec.GeneratedColumn(col)    => ppGeneratedColumn(col)
