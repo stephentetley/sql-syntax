@@ -22,11 +22,15 @@ mod SqlSyntax.Pretty {
         dot, char, int32, squotes, conditionalParens}
 
 
-    use SqlSyntax.Datatypes.{Expression, Literal, 
+    use SqlSyntax.Datatypes.{ShowParens, ShowAs, 
+        Expression, Literal, 
+        CaseStmt,
         Statement, 
-        CreateTableStmt, DropStmt, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
+        CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
+        DropStmt, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
-        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
+        InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, 
+        ReturningClause, ReturnExpression,
         SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, LambdaFilter, ColumnExpression,
         ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, 
         TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
@@ -51,12 +55,19 @@ mod SqlSyntax.Pretty {
     /// TEMP - add to flix-pretty - need to check the operator intersperse uses instead of manually adding a space (", ")
     def commaSpaceSep(docs: List[Doc]): Doc = intersperse(text(", "), docs)
 
-
-    def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
-
     def someOrEmpty(x: Option[a], f: a -> Doc): Doc = match x { 
         case Some(a) => f(a)
-        case None => empty()
+        case None    => empty()
+    }
+
+    def showParens(x: ShowParens, d: Doc): Doc = match x {
+        case ShowParens.ShowParens  => parens(d)
+        case ShowParens.NoParens    => d
+    }
+
+    def ppShowAs(x: ShowAs): Doc = match x {
+        case ShowAs.ShowAs  => text("AS")
+        case ShowAs.NoAs    => empty()
     }
 
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
@@ -68,6 +79,24 @@ mod SqlSyntax.Pretty {
     pub def ppExpression(x: Expression): Doc = match x {
         case Expression.Identifier(s)   => text(s)
         case Expression.Literal(lit)    => ppLiteral(lit)
+        case Expression.Case(stmt)      => ppCaseStmt(stmt)
+    }
+
+    pub def ppLiteral(x: Literal): Doc = match x {
+        case Literal.Integer(i) => int32(i)
+        case Literal.Varchar(s) => squotes(text(s))
+    }
+
+    
+    pub def ppCaseStmt(x: CaseStmt): Doc = match x {
+        case CaseStmt.CaseStmt(optSwitch, caseList, optElse) => {
+            let switchOn = someOrEmpty(optSwitch, ppExpression);
+            let makeCaseStep = match (patt, ans) -> text("WHEN") <<>> ppExpression(patt) <<>> text("THEN") <<>> ppExpression(ans);
+            let cases = List.map(makeCaseStep, caseList);
+            let caseElse = someOrEmpty(optElse, expr -> text("ELSE") <<>> ppExpression(expr));
+            text("CASE") <^> switchOn <<>> sep(cases) <^> caseElse <<>> text("END")
+        }
+
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
@@ -78,14 +107,31 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
-        case CreateTableStmt.CreateTableStmt(orRepB, tempB, notExistsB, qname, cols, tblConstrs) => 
-            let orReplace = docOrEmpty(orRepB, text("OR REPLACE"));
-            let temporary = docOrEmpty(tempB, text("TEMPORARY"));
-            let ifNotExists = docOrEmpty(notExistsB, text("IF NOT EXISTS"));
+        case CreateTableStmt.CreateTableStmt(optReplace, tempB, optIfNotExists, qname, cols, tblConstrs) => 
+            let orReplace = someOrEmpty(optReplace, ppOrReplace);
+            let temporary = someOrEmpty(tempB, ppTemporary);
+            let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
             let colsDs = List.map(match (n,ty) -> text(n) <<>> ppColumnSpec(ty), cols);
             let tblConstrsD = sep(List.map(ppTableConstraint, tblConstrs));
             text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedName(qname) 
                 <<>> optionalTupled(colsDs ++ List#{tblConstrsD})
+    }
+
+    def ppOrReplace(x: OrReplace): Doc = match x {
+        case OrReplace.OrReplace => text("OR REPLACE")
+    }
+
+    def ppTemporary(x: Temporary): Doc = match x {
+        case Temporary.Temporary    => text("TEMPORARY")
+        case Temporary.Temp         => text("TEMP")
+    }
+
+    def ppIfNotExists(x: IfNotExists): Doc = match x {
+        case IfNotExists.IfNotExists => text("IF NOT EXISTS")
+    }
+
+    def ppIfExists(x: IfExists): Doc = match x {
+        case IfExists.IfExists => text("IF EXISTS")
     }
 
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
@@ -137,21 +183,22 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppDropStmt(x: DropStmt): Doc = match x {
-        case DropStmt.DropStmt(tyqual, ifExistsB, qname, optCascadeRestrict) => 
-            let ifExists = docOrEmpty(ifExistsB, text("IF EXISTS"));
+        case DropStmt.DropStmt(tyqual, optIfExists, qname, optCascadeRestrict) => 
+            let ifExists = someOrEmpty(optIfExists, ppIfExists);
             let cascadeRestrict = someOrEmpty(optCascadeRestrict, ppCascadeOrRestrict);
             text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExists <<>> ppQualifiedName(qname) <^> cascadeRestrict
     }
 
     def ppDropQualifier(x: DropQualifier): Doc = match x {
-        case DropQualifier.Function => text("FUNCTION")
-        case DropQualifier.Index    => text("SEQUENCE")
-        case DropQualifier.Macro(b) => text("MACRO") <^> docOrEmpty(b, text("TABLE"))
-        case DropQualifier.Schema   => text("SCHEMA")
-        case DropQualifier.Sequence => text("SEQUENCE")
-        case DropQualifier.Table    => text("TABLE")
-        case DropQualifier.View     => text("VIEW")
-        case DropQualifier.Type     => text("TYPE")
+        case DropQualifier.Function     => text("FUNCTION")
+        case DropQualifier.Index        => text("SEQUENCE")
+        case DropQualifier.Macro        => text("MACRO")
+        case DropQualifier.MacroTable   => text("MACRO") <<>> text("TABLE")
+        case DropQualifier.Schema       => text("SCHEMA")
+        case DropQualifier.Sequence     => text("SEQUENCE")
+        case DropQualifier.Table        => text("TABLE")
+        case DropQualifier.View         => text("VIEW")
+        case DropQualifier.Type         => text("TYPE")
     }
     
     def ppCascadeOrRestrict(x: CascadeOrRestrict): Doc = match x {
@@ -219,14 +266,15 @@ mod SqlSyntax.Pretty {
     }
 
     def ppInsertReturningClause(x: ReturningClause): Doc = match x {
-        case ReturningClause.ReturningClause(starB, retExprs) => 
-            let star = docOrEmpty(starB, text("*"));
-            text("RETURNING") <<>> commaSpaceSep(star :: List.map(ppReturnExpression, retExprs))
+        case ReturningClause.ReturningClause(retExprs) => 
+            text("RETURNING") <<>> commaSpaceSep(List.map(ppReturnExpression, retExprs))
     }
 
-    def ppReturnExpression(x: (Expression, Option[(Bool, String)])): Doc = match x {
-        case (expr, None) => ppExpression(expr)
-        case (expr, Some(b, exprAlias)) => ppExpression(expr) <^> docOrEmpty(b, text("AS")) <<>> text(exprAlias)
+    def ppReturnExpression(x: ReturnExpression): Doc = match x {
+        case ReturnExpression.ReturnStar                                        => text("*")
+        case ReturnExpression.ReturnExpression(expr, None)                      => ppExpression(expr)
+        case ReturnExpression.ReturnExpression(expr, Some(showAs, exprAlias))   => 
+            ppExpression(expr) <^> ppShowAs(showAs) <^> text(exprAlias)
     }
 
 
@@ -261,8 +309,8 @@ mod SqlSyntax.Pretty {
 
     def ppSelectExpr(x: SelectExpr): Doc = match x {
         case SelectExpr.SelectExpr(expr, None)                  => ppExpression(expr) 
-        case SelectExpr.SelectExpr(expr, Some(asB, nameAlias))  => 
-            ppExpression(expr) <^> docOrEmpty(asB, text("AS")) <<>> text(nameAlias)
+        case SelectExpr.SelectExpr(expr, Some(showAs, nameAlias))  => 
+            ppExpression(expr) <^> ppShowAs(showAs) <^> text(nameAlias)
         case SelectExpr.SelectStar(optTable, starOpts)          => {
             let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
             tableName <^> char('*') <<>> ppStarOptions(starOpts)
@@ -274,7 +322,7 @@ mod SqlSyntax.Pretty {
     def ppStarOptions(x: StarOptions): Doc = match x {
         case StarOptions.StarOptions(optExcludes, optReplaces) => {
             let excludes = someOrEmpty(optExcludes, xs -> text("EXCLUDE") <<>> tupled(List.map(text, xs)));
-            let makeReplace = match (expr, name) -> ppExpression(expr) <<>> text("AS" ) <<>> text(name); 
+            let makeReplace = match (expr, name) -> ppExpression(expr) <<>> text("AS") <<>> text(name); 
             let replaces = someOrEmpty(optReplaces, xs -> text("REPLACE") <<>> tupled(List.map(makeReplace, xs)));
             excludes <^> replaces
         }
@@ -310,9 +358,9 @@ mod SqlSyntax.Pretty {
             let sample = someOrEmpty(optSample, ppTableSample);
             ppFromExpression(expr) <^> tableAlias <^> sample
         }
-        case FromExpressionOrJoin.Join(parensB, joinClause, optAlias) => {
+        case FromExpressionOrJoin.Join(useParens, joinClause, optAlias) => {
             let joinAlias = someOrEmpty(optAlias, s -> text("AS") <<>> text(s));
-            conditionalParens(parensB, ppJoinClause(joinClause) <^> joinAlias)
+            showParens(useParens, ppJoinClause(joinClause) <^> joinAlias)
         }
     }
 
@@ -365,10 +413,9 @@ mod SqlSyntax.Pretty {
     }
 
     def ppTableAlias(x: TableAlias): Doc = match x {
-        case TableAlias.TableAlias(asB, tableAlias, optCols) => {
-            let asKwd = docOrEmpty(asB, text("AS"));
+        case TableAlias.TableAlias(showAs, tableAlias, optCols) => {
             let columns = someOrEmpty(optCols, cols -> optionalTupled(List.map(text, cols)));
-            asKwd <^> text(tableAlias) <^> columns
+            ppShowAs(showAs) <^> text(tableAlias) <^> columns
         }
     }
 
@@ -389,8 +436,9 @@ mod SqlSyntax.Pretty {
 
 
     def ppPercentOrRowCount(x: PercentOrRow): Doc = match x {
-        case PercentOrRow.Percent(b) => if (b) char('%') else text("PERCENT")
-        case PercentOrRow.Row   => text("ROWS")
+        case PercentOrRow.Percent       => text("PERCENT")
+        case PercentOrRow.PercentSymbol => char('%')
+        case PercentOrRow.Row           => text("ROWS")
     }
 
     def ppSamplingMethod(x: SamplingMethod): Doc = match x {
@@ -532,9 +580,5 @@ mod SqlSyntax.Pretty {
         case SqlType.Integer => text("INTEGER")
     }
 
-    pub def ppLiteral(x: Literal): Doc = match x {
-        case Literal.Integer(i) => int32(i)
-        case Literal.Varchar(s) => squotes(text(s))
-    }
 
 }

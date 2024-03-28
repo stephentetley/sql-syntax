@@ -18,7 +18,8 @@ mod Test01 {
 
     use SqlSyntax.Datatypes.{SqlType, ColumnConstraint, TableConstraint, DropQualifier, 
         CascadeOrRestrict, InsertQualifier, InsertColumnQualifier, InsertValuesClause, 
-        DoUpdateOrDoNothing}
+        DoUpdateOrDoNothing, OrReplace, Temporary, IfNotExists, IfExists, 
+        ReturnExpression}
 
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -40,7 +41,8 @@ mod Test01 {
 
     @test
     def test02(): Unit \ IO = 
-        let src = CreateTableStmt(true, false, true, UnqualifiedName("edge"), 
+        let src = CreateTableStmt(Some(OrReplace.OrReplace), Some(Temporary.Temp), 
+                        Some(IfNotExists.IfNotExists), UnqualifiedName("edge"), 
                         List#{("from_edge", Column(SqlType.Varchar, List#{ColumnConstraint.AllowNull(false)})), 
                                 ("to_edge", Column(SqlType.Varchar, List#{ColumnConstraint.AllowNull(false)}))}, 
                         List#{TableConstraint.PrimaryKey(List#{"from_edge", "to_edge"})});
@@ -48,7 +50,7 @@ mod Test01 {
 
     @test
     def test03(): Unit \ IO = 
-        let src = DropStmt(DropQualifier.Table, true, UnqualifiedName("edge"), Some(CascadeOrRestrict.Cascade));
+        let src = DropStmt(DropQualifier.Table, Some(IfExists.IfExists), UnqualifiedName("edge"), Some(CascadeOrRestrict.Cascade));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppDropStmt(src)))
 
     @test
@@ -58,7 +60,7 @@ mod Test01 {
                         Some(InsertColumnQualifier.ByName), 
                         InsertValuesClause.Values(ValuesClause(List#{List#{Literal(Integer(1)), Literal(Integer(2))}})),
                         Some(OnConflictClause(List#{"from_edge", "to_edge"}, None, DoUpdateOrDoNothing.DoNothing)),
-                        Some(ReturningClause(true, Nil)));
+                        Some(ReturningClause(List#{ReturnExpression.ReturnStar})));
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppInsertStmt(src)))
 
 }

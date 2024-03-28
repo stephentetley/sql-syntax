@@ -17,15 +17,15 @@
 mod SqlSyntax.Datatypes {
 
 
-    pub type alias OrReplaceB = Bool
-    pub type alias TemporaryB = Bool
-    pub type alias IfExistsB = Bool
-    pub type alias IfNotExistsB = Bool
-    pub type alias TableB = Bool
-    pub type alias StarB = Bool
-    pub type alias AsB = Bool
-    pub type alias AsSymbolB = Bool
-    pub type alias ParensB = Bool
+    pub enum ShowParens with Eq, ToString {
+        case ShowParens
+        case NoParens
+    }
+
+    pub enum ShowAs with Eq, ToString {
+        case ShowAs
+        case NoAs
+    }
 
     pub enum QualifiedName with Eq, ToString {
         case QualifiedName(String, String)
@@ -36,12 +36,18 @@ mod SqlSyntax.Datatypes {
     pub enum Expression with Eq, ToString {
         case Identifier(String)
         case Literal(Literal)
+        case Case(CaseStmt)
     }
 
 
     pub enum Literal with Eq, ToString {
         case Integer(Int32) // TODO
         case Varchar(String)
+    }
+
+
+    pub enum CaseStmt with Eq, ToString {
+        case CaseStmt(Option[Expression], List[(Expression, Expression)], Option[Expression])
     }
 
     // Columns and primary keys
@@ -53,7 +59,24 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum CreateTableStmt with Eq, ToString {
-        case CreateTableStmt(OrReplaceB, TemporaryB, IfNotExistsB, QualifiedName, List[(String, ColumnSpec)], List[TableConstraint])
+        case CreateTableStmt(Option[OrReplace], Option[Temporary], Option[IfNotExists], QualifiedName, List[(String, ColumnSpec)], List[TableConstraint])
+    }
+
+    pub enum OrReplace with Eq, ToString  {
+        case OrReplace
+    }
+
+    pub enum Temporary with Eq, ToString  {
+        case Temporary
+        case Temp
+    }
+
+    pub enum IfNotExists with Eq, ToString  {
+        case IfNotExists
+    }
+
+    pub enum IfExists with Eq, ToString  {
+        case IfExists
     }
 
 
@@ -94,13 +117,14 @@ mod SqlSyntax.Datatypes {
 
 
     pub enum DropStmt with Eq, ToString {
-        case DropStmt(DropQualifier, IfExistsB, QualifiedName, Option[CascadeOrRestrict])
+        case DropStmt(DropQualifier, Option[IfExists], QualifiedName, Option[CascadeOrRestrict])
     }
 
     pub enum DropQualifier with Eq, ToString {
         case Function
         case Index
-        case Macro(TableB)
+        case Macro
+        case MacroTable
         case Schema
         case Sequence
         case Table
@@ -136,7 +160,12 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum ReturningClause with Eq, ToString {
-        case ReturningClause(StarB, List[(Expression, Option[(AsB, String)])])
+        case ReturningClause(List[ReturnExpression])
+    }
+
+    pub enum ReturnExpression with Eq, ToString {
+        case ReturnStar
+        case ReturnExpression(Expression, Option[(ShowAs, String)])
     }
 
     pub enum OnConflictClause with Eq, ToString {
@@ -165,7 +194,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum SelectExpr with Eq, ToString {
-        case SelectExpr(Expression, Option[(AsB, String)])
+        case SelectExpr(Expression, Option[(ShowAs, String)])
         case SelectStar(Option[String], StarOptions)
         case SelectColumns(ColumnExpression)
     }
@@ -190,7 +219,7 @@ mod SqlSyntax.Datatypes {
 
     pub enum FromExpressionOrJoin with Eq, ToString {
         case FromExpression(FromExpression, Option[TableAlias], Option[TableSample])
-        case Join(ParensB, JoinClause, Option[String])
+        case Join(ShowParens, JoinClause, Option[String])
     }
 
 
@@ -239,7 +268,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum TableAlias with Eq, ToString {
-        case TableAlias(AsB, String, Option[List[String]])
+        case TableAlias(ShowAs, String, Option[List[String]])
     }
 
     pub enum TableSample with Eq, ToString {
@@ -247,9 +276,9 @@ mod SqlSyntax.Datatypes {
         case FunctionStyle(Option[SamplingMethod], Int32, Option[PercentOrRow], Option[Int32])
     }
 
-    // `Precent(true)` to show as `%`
     pub enum PercentOrRow with Eq, ToString {
-        case Percent(AsSymbolB)
+        case Percent
+        case PercentSymbol
         case Row
     }
 
