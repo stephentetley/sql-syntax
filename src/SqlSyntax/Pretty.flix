@@ -31,6 +31,7 @@ mod SqlSyntax.Pretty {
         AttachStmt, AttachOption, AttachType,
         CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         DropStmt, 
+        DetachStmt, DetachQualifier,
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, 
         ReturningClause, ReturnExpression,
@@ -267,6 +268,21 @@ mod SqlSyntax.Pretty {
         case TableConstraint.Check(expr)                    => text("CHECK") <<>> parens(ppExpression(expr)) 
         case TableConstraint.ForeignKey(cols, ft, fcols)    => 
             text("FOREIGN KEY") <<>> tupled(List.map(text, cols)) <<>> text("REFERENCES") <<>> text(ft) <<>> tupled(List.map(text, fcols))
+    }
+
+
+    pub def ppDetachStmt(x: DetachStmt): Doc = match x {
+        case DetachStmt.DetachStmt(optQual, name) => 
+            let qualifier = someOrEmpty(optQual, ppDetachQualifier);
+        text("DETACH") <^> qualifier <^> text(name)
+    }
+
+
+    def ppDetachQualifier(x: DetachQualifier): Doc = match x {
+        case DetachQualifier.DetachDatabase(optIfExists) => {
+            let ifExists = someOrEmpty(optIfExists, ppIfExists);
+            text("DATABASE") <^> ifExists
+        }
     }
 
 

@@ -174,6 +174,14 @@ mod SqlSyntax.Datatypes {
     }
 
 
+    pub enum DetachStmt with Eq, ToString {
+        case DetachStmt(Option[DetachQualifier], String)
+    }
+
+    pub enum DetachQualifier with Eq, ToString {
+        case DetachDatabase(Option[IfExists])
+    }
+
     pub enum DropStmt with Eq, ToString {
         case DropStmt(DropQualifier, Option[IfExists], QualifiedName, Option[CascadeOrRestrict])
     }
