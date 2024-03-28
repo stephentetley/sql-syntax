@@ -33,7 +33,11 @@ mod SqlSyntax.Pretty {
         TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
         TableAlias, TableSample, 
         PercentOrRowCount, SamplingMethod, 
-        WhereClause, QualifyClause, LimitClause, 
+        WhereClause, 
+        GroupByClause, Grouping, CubeOrRollup, 
+        HavingClause, 
+        WindowClause, WindowDefinition, PartitionByClause, FrameSpec, RangeOrRows, FrameBody, FrameStart, FrameStop, WindowExclude,
+        QualifyClause, OrderByClause, LimitClause, 
         SqlType}
     use SqlSyntax.Datatypes.QualifiedName.{QualifiedName, UnqualifiedName}
     use SqlSyntax.Datatypes.Expression.{Literal}
@@ -72,19 +76,36 @@ mod SqlSyntax.Pretty {
     use SqlSyntax.Datatypes.OuterJoin.{OuterJoin}
     use SqlSyntax.Datatypes.TableAlias.{TableAlias}
     use SqlSyntax.Datatypes.TableSample.{SizeFirst, FunctionStyle}
-    use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, Rows}
+    use SqlSyntax.Datatypes.PercentOrRowCount.{Percent, RowCount}
     use SqlSyntax.Datatypes.SamplingMethod.{Reservoir, Bernoulli, System}
     use SqlSyntax.Datatypes.WhereClause.{WhereClause}
+    use SqlSyntax.Datatypes.GroupByClause.{GroupBy, GroupByAll}
+    use SqlSyntax.Datatypes.Grouping.{GroupingExpr, GroupingSets, GroupingSimple}
+    use SqlSyntax.Datatypes.CubeOrRollup.{Cube, Rollup}
+    use SqlSyntax.Datatypes.HavingClause.{HavingClause}
+    use SqlSyntax.Datatypes.WindowClause.{WindowClause}
+    use SqlSyntax.Datatypes.WindowDefinition.{WindowDefinition}
+    use SqlSyntax.Datatypes.PartitionByClause.{PartitionByClause}
+    use SqlSyntax.Datatypes.FrameSpec.{FrameSpec}
+    use SqlSyntax.Datatypes.RangeOrRows.{Range, Rows}
+    // use SqlSyntax.Datatypes.FrameBody.{Between, UnboundedPreceding, Preceding, CurrentRow}
+    // use SqlSyntax.Datatypes.FrameStart.{UnboundedPreceding, Preceding, CurrentRow, Following}
+    use SqlSyntax.Datatypes.FrameStop.{Preceding, CurrentRow, Following, UnboundedFollowing}
+    use SqlSyntax.Datatypes.WindowExclude.{CurrentRow, Group, Ties, NoOthers}
     use SqlSyntax.Datatypes.QualifyClause.{QualifyClause}
+    use SqlSyntax.Datatypes.OrderByClause.{OrderByExprs, OrderByAll}
     use SqlSyntax.Datatypes.LimitClause.{LimitClause}
     use SqlSyntax.Datatypes.SqlType.{VarcharType, IntegerType}
 
 
-    // TEMP - add to flix-pretty
-    def optionalIntersperse(sepd: Doc, docs: List[Doc]): Doc = match Text.PrettyPrint.removeEmpties(docs) {
-        case Nil => empty()
-        case xs  => intersperse(sepd, xs)
-    }
+    // TEMP - add to flix-pretty?
+    // def optionalIntersperse(sepd: Doc, docs: List[Doc]): Doc = match Text.PrettyPrint.removeEmpties(docs) {
+    //     case Nil => empty()
+    //     case xs  => intersperse(sepd, xs)
+    // }
+
+    /// TEMP - add to flix-pretty - need to check the operator intersperse uses instead of manually adding a space (", ")
+    def commaSpaceSep(docs: List[Doc]): Doc = intersperse(text(", "), docs)
 
 
     def docOrEmpty(b: Bool, d: Doc): Doc = if (b) d else empty()
@@ -217,7 +238,7 @@ mod SqlSyntax.Pretty {
     def ppValuesClause(x: ValuesClause): Doc = match x {
         case ValuesClause(xss)     => {
             let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
-            text("VALUES") <<>> intersperse(text(", "), List.map(ppValuesList, xss))
+            text("VALUES") <<>> commaSpaceSep(List.map(ppValuesList, xss))
         }
     }
 
@@ -232,7 +253,7 @@ mod SqlSyntax.Pretty {
 
     def ppDoUpdateOrDoNothing(x: DoUpdateOrDoNothing): Doc = match x {
         case DoUpdate(setExprs, optWhereExpr) => {
-            let setCols = intersperse(text(", "), List.map(match (col, expr) -> text(col) <<>> equals() <<>> ppExpression(expr), setExprs));
+            let setCols = commaSpaceSep(List.map(match (col, expr) -> text(col) <<>> equals() <<>> ppExpression(expr), setExprs));
             let whereExpr = someOrEmpty(optWhereExpr, expr -> text("WHERE") <<>> ppExpression(expr));
             text("DO UPDATE") <<>> text("SET") <<>> setCols <^> whereExpr
         }
@@ -242,7 +263,7 @@ mod SqlSyntax.Pretty {
     def ppInsertReturningClause(x: ReturningClause): Doc = match x {
         case ReturningClause(starB, retExprs) => 
             let star = docOrEmpty(starB, text("*"));
-            text("RETURNING") <<>> optionalIntersperse(text(", "), star :: List.map(ppReturnExpression, retExprs))
+            text("RETURNING") <<>> commaSpaceSep(star :: List.map(ppReturnExpression, retExprs))
     }
 
     def ppReturnExpression(x: (Expression, Option[(Bool, String)])): Doc = match x {
@@ -253,19 +274,23 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppSelectStmt(x: SelectStmt): Doc = match x {
-        case SelectStmt(selClause, fromClause, optWhere, _, _, _, _, _, optLimit) => {
-            let whereClause = someOrEmpty(optWhere, ppWhereClause);
-            let limitClause = someOrEmpty(optLimit, ppLimitClause);
-            ppSelectClause(selClause) <<>> ppFromClause(fromClause) 
-                <^> whereClause
-                <^> limitClause
+        case SelectStmt(selClause, fromClause, optWhere, optGroupBy, optHaving, optWindow, optQualify, optOrderBy, optLimit) => {
+            ppSelectClause(selClause) 
+                <<>> ppFromClause(fromClause) 
+                <^> someOrEmpty(optWhere, ppWhereClause)
+                <^> someOrEmpty(optGroupBy, ppGroupByClause)
+                <^> someOrEmpty(optHaving, ppHavingClause)
+                <^> someOrEmpty(optWindow, ppWindowClause)
+                <^> someOrEmpty(optQualify, ppQualifyClause)
+                <^> someOrEmpty(optOrderBy, ppOrderByClause)
+                <^> someOrEmpty(optLimit, ppLimitClause)
         }
     }
 
     def ppSelectClause(x: SelectClause): Doc = match x {
         case SelectClause(optDistinct, sels) => {
             let distinct = someOrEmpty(optDistinct, ppDistinctClause);
-            let selectExprs = intersperse(text(", "), List.map(ppSelectExpr, sels));
+            let selectExprs = commaSpaceSep(List.map(ppSelectExpr, sels));
             text("SELECT") <^> distinct <<>> selectExprs
         }
     }
@@ -308,7 +333,7 @@ mod SqlSyntax.Pretty {
 
     def ppFromClause(x: FromClause): Doc = match x {
         case FromClause(exprs) => { 
-            let exprList = intersperse(text(", "), List.map(ppFromExpressionOrJoin, exprs));
+            let exprList = commaSpaceSep(List.map(ppFromExpressionOrJoin, exprs));
             text("FROM") <<>> exprList
         }
     }
@@ -398,7 +423,7 @@ mod SqlSyntax.Pretty {
 
     def ppPercentOrRowCount(x: PercentOrRowCount): Doc = match x {
         case Percent(b) => if (b) char('%') else text("PERCENT")
-        case Rows       => text("ROWS")
+        case RowCount   => text("ROWS")
     }
 
     def ppSamplingMethod(x: SamplingMethod): Doc = match x {
@@ -413,8 +438,96 @@ mod SqlSyntax.Pretty {
     }
 
 
-    def _ppQualifyClause(x: QualifyClause): Doc = match x {
+    def ppGroupByClause(x: GroupByClause): Doc = match x {
+        case GroupBy(xs)    => text("GROUP BY") <<>> commaSpaceSep(List.map(ppGrouping, xs))
+        case GroupByAll     => text("GROUP BY") <<>> text("ALL")
+    }
+
+    def ppGrouping(x: Grouping): Doc = match x {
+        case GroupingExpr(expr) => ppExpression(expr)
+        case GroupingSets(xss)  => tupled(List.map(tupled, List.map(List.map(ppExpression), xss)))
+        case GroupingSimple(cor, exprs) => ppCubeOrRollup(cor) <<>> tupled(List.map(ppExpression, exprs))
+    }
+
+    def ppCubeOrRollup(x: CubeOrRollup): Doc = match x {
+        case Cube   => text("CUBE")
+        case Rollup => text("ROLLUP")
+    }
+
+    def ppHavingClause(x: HavingClause): Doc = match x {
+        case HavingClause(expr) => text("HAVING") <<>> ppExpression(expr)
+    }
+
+    def ppWindowClause(x: WindowClause): Doc = match x {
+        case WindowClause(winDecls) => {
+            let makeWindowDecl = match (name, defn) -> text(name) <<>> text("AS") <<>> ppWindowDefinition(defn);
+            text("WINDOW") <<>> commaSpaceSep(List.map(makeWindowDecl, winDecls))
+        }
+    }
+
+    def ppWindowDefinition(x: WindowDefinition): Doc = match x {
+        case WindowDefinition(optBaseName, optPartitionBy, optOrderBy, frameSpec) => {
+            let baseName = someOrEmpty(optBaseName, text);
+            let partitionBy = someOrEmpty(optPartitionBy, ppPartitionByClause);
+            let orderBy = someOrEmpty(optOrderBy, ppOrderByClause);
+            parens(baseName <^> partitionBy <^> orderBy <<>> ppFrameSpec(frameSpec))
+        }
+
+    }
+
+    def ppPartitionByClause(x: PartitionByClause): Doc = match x {
+        case PartitionByClause(exprs) => text("PARTITION BY") <<>> commaSpaceSep(List.map(ppExpression, exprs))
+    }
+
+    def ppFrameSpec(x: FrameSpec): Doc = match x {
+        case FrameSpec(ror, frameBody, optExclude) => {
+            let exclude = someOrEmpty(optExclude, ppWindowExclude);
+            ppRangeOrRows(ror) <<>> ppFrameBody(frameBody) <^> exclude
+        }
+    }
+
+    def ppRangeOrRows(x: RangeOrRows): Doc = match x {
+        case Range  => text("RANGE")
+        case Rows   => text("ROWS")
+    }
+
+    def ppFrameBody(x: FrameBody): Doc = match x {
+        case FrameBody.Between(frameStart, frameStop) => 
+            text("BETWEEN") <<>> ppFrameStart(frameStart) <<>> text("AND") <<>> ppFrameStop(frameStop) 
+        case FrameBody.UnboundedPreceding             => text("UNBOUNDED PRECEDING")
+        case FrameBody.Preceding(expr)                => ppExpression(expr) <<>> text("PRECEDING")
+        case FrameBody.CurrentRow                     => text("CURRENT ROW")
+    }
+
+
+    def ppFrameStart(x: FrameStart): Doc = match x {
+        case FrameStart.UnboundedPreceding => text("UNBOUNDED FOLLOWING")
+        case FrameStart.Preceding(expr)    => ppExpression(expr) <<>> text("PRECEDING")
+        case FrameStart.CurrentRow         => text("CURRENT ROW")
+        case FrameStart.Following(expr)    => ppExpression(expr) <<>> text("FOLLOWING")
+    }
+
+    def ppFrameStop(x: FrameStop): Doc = match x {
+        case FrameStop.Preceding(expr)    => ppExpression(expr) <<>> text("PRECEDING")
+        case FrameStop.CurrentRow         => text("CURRENT ROW")
+        case FrameStop.Following(expr)    => ppExpression(expr) <<>> text("FOLLOWING")
+        case FrameStop.UnboundedFollowing => text("UNBOUNDED FOLLOWING")
+    }
+
+    def ppWindowExclude(x: WindowExclude): Doc = text("EXCLUDE") <<>> match x {
+        case CurrentRow => text("CURRENT ROW")
+        case Group      => text("GROUP")
+        case Ties       => text("TIES")
+        case NoOthers   => text("NO OTHERS")
+    }
+
+    def ppQualifyClause(x: QualifyClause): Doc = match x {
         case QualifyClause(expr) => text("QUALIFY") <<>> ppExpression(expr)
+    }
+
+    def ppOrderByClause(x: OrderByClause): Doc = match x {
+        case OrderByExprs(_xs) => ppTODO(TODO("OrderByExprs"))
+        case OrderByAll(_optSortOrder, _optNullsPos) => ppTODO(TODO("OrderByAll"))
     }
 
     def ppLimitClause(x: LimitClause): Doc = match x {

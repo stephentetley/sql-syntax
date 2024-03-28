@@ -243,7 +243,7 @@ mod SqlSyntax.Datatypes {
     // `Precent(true)` to show as `%`
     pub enum PercentOrRowCount with Eq, ToString {
         case Percent(AsSymbolB)
-        case Rows
+        case RowCount
     }
 
     pub enum SamplingMethod with Eq, ToString {
@@ -271,16 +271,21 @@ mod SqlSyntax.Datatypes {
         case Cube
         case Rollup
     }
+
     pub enum HavingClause with Eq, ToString {
         case HavingClause(Expression)
     }
 
     pub enum WindowClause with Eq, ToString {
-        case WindowClause(String, WindowDefinition)
+        case WindowClause(List[(String, WindowDefinition)])
     }
 
     pub enum WindowDefinition with Eq, ToString {
-        case WindowDefinition(String, Option[List[Expression]], Option[OrderByClause], Option[FrameSpec])
+        case WindowDefinition(Option[String], Option[PartitionByClause], Option[OrderByClause], FrameSpec)
+    }
+
+    pub enum PartitionByClause with Eq, ToString {
+        case PartitionByClause(List[Expression])
     }
 
     pub enum FrameSpec with Eq, ToString {
@@ -298,7 +303,6 @@ mod SqlSyntax.Datatypes {
         case Preceding(Expression)
         case CurrentRow
     }
-
 
     pub enum FrameStart with Eq, ToString {
         case UnboundedPreceding
