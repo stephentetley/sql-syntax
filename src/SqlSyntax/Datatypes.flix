@@ -27,11 +27,9 @@ mod SqlSyntax.Datatypes {
     pub type alias AsSymbolB = Bool
     pub type alias ParensB = Bool
 
-    pub enum TODO with Eq, ToString {
-        case TODO(String)
-    }
 
     pub enum Expression with Eq, ToString {
+        case Identifier(String)
         case Literal(Literal)
     }
 
@@ -60,6 +58,10 @@ mod SqlSyntax.Datatypes {
 
     pub enum ColumnSpec with Eq, ToString {
         case Column(SqlType, List[ColumnConstraint])
+        case GeneratedColumn(GeneratedColumn)
+    }
+
+    pub enum GeneratedColumn with Eq, ToString {
         case GeneratedColumn(Option[SqlType], Option[GeneratedAlways], Expression, Option[VirtualOrStored])
     }
 
@@ -174,7 +176,11 @@ mod SqlSyntax.Datatypes {
     pub enum ColumnExpression with Eq, ToString {
         case ColumnStar(Option[String], StarOptions)
         case ColumnRegex(String)
-        case ColumnLambda(TODO)
+        case ColumnLambda(String, LambdaFilter)
+    }
+
+    pub enum LambdaFilter with Eq, ToString {
+        case LambdaFilter(Expression)
     }
 
     pub enum FromClause with Eq, ToString {

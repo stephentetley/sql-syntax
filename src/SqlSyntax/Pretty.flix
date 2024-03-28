@@ -21,14 +21,13 @@ mod SqlSyntax.Pretty {
     use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
         dot, char, int32, squotes, conditionalParens}
 
-    use SqlSyntax.Datatypes.{TODO}
-    use SqlSyntax.Datatypes.TODO.{TODO}
 
     use SqlSyntax.Datatypes.{Expression, Literal, 
-        Statement, CreateTableStmt, DropStmt, ColumnSpec, ColumnConstraint, TableConstraint, 
+        Statement, 
+        CreateTableStmt, DropStmt, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
         InsertStmt, InsertQualifier, InsertColumnQualifier, InsertValuesClause, OnConflictClause, DoUpdateOrDoNothing, ReturningClause, 
-        SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, ColumnExpression,
+        SelectStmt, SelectClause, DistinctClause, SelectExpr, StarOptions, LambdaFilter, ColumnExpression,
         ValuesClause, FromClause, FromExpressionOrJoin, FromExpression, JoinClause, 
         TableOrSubquery, JoinDesignation, JoinCondition, NaturalOrAsOf, JoinType, OuterJoin, 
         TableAlias, TableSample, 
@@ -41,10 +40,7 @@ mod SqlSyntax.Pretty {
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
         SqlType}
-    use SqlSyntax.Datatypes.Expression.{Literal}
-    use SqlSyntax.Datatypes.Statement.{CreateTable, Drop, Insert, Select}
     use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
-    use SqlSyntax.Datatypes.ColumnSpec.{Column, GeneratedColumn}
     use SqlSyntax.Datatypes.DropStmt.{DropStmt}
     use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
     use SqlSyntax.Datatypes.ValuesClause.{ValuesClause}
@@ -85,10 +81,6 @@ mod SqlSyntax.Pretty {
         case None => empty()
     }
 
-    def ppTODO(x: TODO): Doc = match x {
-        case TODO(name) => text("TODO:") <<>> text(name)
-    }
-
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
         case QualifiedName.QualifiedName(scm, name) => text(scm ++ "." ++ name)
         case QualifiedName.UnqualifiedName(name)    => text(name)
@@ -96,14 +88,15 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppExpression(x: Expression): Doc = match x {
-        case Literal(lit) => ppLiteral(lit)
+        case Expression.Identifier(s)   => text(s)
+        case Expression.Literal(lit)    => ppLiteral(lit)
     }
 
     pub def ppStatement(x: Statement): Doc = match x {
-        case CreateTable(stmt)  => ppCreateTableStmt(stmt)
-        case Drop(stmt)         => ppDropStmt(stmt)
-        case Insert(stmt)       => ppInsertStmt(stmt)
-        case Select(stmt)       => ppSelectStmt(stmt)
+        case Statement.CreateTable(stmt)    => ppCreateTableStmt(stmt)
+        case Statement.Drop(stmt)           => ppDropStmt(stmt)
+        case Statement.Insert(stmt)         => ppInsertStmt(stmt)
+        case Statement.Select(stmt)         => ppSelectStmt(stmt)
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
@@ -118,15 +111,32 @@ mod SqlSyntax.Pretty {
     }
 
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
-        case Column(ty, constrs)              => ppSqlType(ty) <^> ppColumnConstraints(constrs)
-        case GeneratedColumn(optType, _, _, _) => {
+        case ColumnSpec.Column(ty, constrs)     => { 
+            let columnConstraints = intersperse(space(), List.map(ppColumnConstraint, constrs));
+            ppSqlType(ty) <^> columnConstraints
+        }
+        case ColumnSpec.GeneratedColumn(col)    => ppGeneratedColumn(col)
+    }
+
+    def ppGeneratedColumn(x: GeneratedColumn): Doc = match x { 
+        case GeneratedColumn.GeneratedColumn(optType, optGenAlways, expr, optVoS) => {
             let sqltype = someOrEmpty(optType, ppSqlType);
-            sqltype <^> ppTODO(TODO("GeneratedColumn"))
+            let generatedAlways = someOrEmpty(optGenAlways, ppGeneratedAlways);
+            let virtualOrStored = someOrEmpty(optVoS, ppVirtualOrStored);
+            sqltype <^> generatedAlways <^> text("AS") <<>> parens(ppExpression(expr)) <^> virtualOrStored
         }
     }
 
-    def ppColumnConstraints(xs: List[ColumnConstraint]): Doc = 
-        intersperse(space(), List.map(ppColumnConstraint, xs))
+
+    def ppGeneratedAlways(x: GeneratedAlways): Doc = match x {
+        case GeneratedAlways.GeneratedAlways => text("GENERATED ALWAYS")
+    }
+
+
+    def ppVirtualOrStored(x: VirtualOrStored): Doc = match x {
+        case VirtualOrStored.Virtual    => text("VIRTUAL")
+        case VirtualOrStored.Stored     => text("STORED")
+    }
 
     def ppColumnConstraint(x: ColumnConstraint): Doc = match x {
         case ColumnConstraint.PrimaryKey            => text("PRIMARY KEY")
@@ -284,7 +294,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppStarOptions(x: StarOptions): Doc = match x {
-        case StarOptions(optExcludes, optReplaces) => {
+        case StarOptions.StarOptions(optExcludes, optReplaces) => {
             let excludes = someOrEmpty(optExcludes, xs -> text("EXCLUDE") <<>> tupled(List.map(text, xs)));
             let makeReplace = match (expr, name) -> ppExpression(expr) <<>> text("AS" ) <<>> text(name); 
             let replaces = someOrEmpty(optReplaces, xs -> text("REPLACE") <<>> tupled(List.map(makeReplace, xs)));
@@ -298,7 +308,15 @@ mod SqlSyntax.Pretty {
             tableName <^> char('*') <<>> ppStarOptions(starOpts)
         }
         case ColumnExpression.ColumnRegex(regex)                => squotes(text(regex))
-        case ColumnExpression.ColumnLambda(todo)                => ppTODO(todo)
+        case ColumnExpression.ColumnLambda(ident, lam)          => { 
+            
+            text(ident) <<>> text("->") <<>> ppLambdaFilter(lam)
+        }
+    }
+
+
+    def ppLambdaFilter(x: LambdaFilter): Doc = match x {
+        case LambdaFilter.LambdaFilter(expr) => ppExpression(expr)
     }
 
     def ppFromClause(x: FromClause): Doc = match x {
