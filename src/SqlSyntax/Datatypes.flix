@@ -22,12 +22,12 @@ mod SqlSyntax.Datatypes {
         case NoParens
     }
 
-    pub enum ShowAs with Eq, ToString {
+    pub enum ShowAsKeyword with Eq, ToString {
         case ShowAs
         case NoAs
     }
 
-    pub enum ShowColumn with Eq, ToString {
+    pub enum ShowColumnKeyword with Eq, ToString {
         case ShowColumn
         case NoColumn
     }
@@ -69,23 +69,22 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum AlterTableClause with Eq, ToString {
-        case Add(ShowColumn, Option[IfNotExists], String, SqlType, List[ColumnConstraint])
-        case Drop(ShowColumn, Option[IfExists], String)
-        case Alter(ShowColumn, String, AlterColumnOptions)
-        case Rename(ShowColumn, String, String)
+        case Add(ShowColumnKeyword, Option[IfNotExists], String, SqlType, List[ColumnConstraint])
+        case Drop(ShowColumnKeyword, Option[IfExists], String)
+        case Alter(ShowColumnKeyword, String, AlterColumnOptions)
+        case Rename(ShowColumnKeyword, String, String)
         case RenameTo(String)
     }
 
     pub enum AlterColumnOptions with Eq, ToString {
-        case SetData(ShowSetData, SqlType, Option[String], Option[Expression])
+        case SetData(Option[SetData], SqlType, Option[String], Option[Expression])
         case SetDefault(Expression)
         case DropDefault
     }
 
 
-    pub enum ShowSetData with Eq, ToString {
-        case ShowSetData
-        case DontShow
+    pub enum SetData with Eq, ToString {
+        case SetData
     }
 
     pub enum CreateTableStmt with Eq, ToString {
@@ -195,7 +194,7 @@ mod SqlSyntax.Datatypes {
 
     pub enum ReturnExpression with Eq, ToString {
         case ReturnStar
-        case ReturnExpression(Expression, Option[(ShowAs, String)])
+        case ReturnExpression(Expression, Option[(ShowAsKeyword, String)])
     }
 
     pub enum OnConflictClause with Eq, ToString {
@@ -224,7 +223,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum SelectExpr with Eq, ToString {
-        case SelectExpr(Expression, Option[(ShowAs, String)])
+        case SelectExpr(Expression, Option[(ShowAsKeyword, String)])
         case SelectStar(Option[String], StarOptions)
         case SelectColumns(ColumnExpression)
     }
@@ -298,7 +297,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum TableAlias with Eq, ToString {
-        case TableAlias(ShowAs, String, Option[List[String]])
+        case TableAlias(ShowAsKeyword, String, Option[List[String]])
     }
 
     pub enum TableSample with Eq, ToString {

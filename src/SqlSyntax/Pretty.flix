@@ -22,11 +22,11 @@ mod SqlSyntax.Pretty {
         dot, char, int32, squotes, conditionalParens}
 
 
-    use SqlSyntax.Datatypes.{ShowParens, ShowAs, ShowColumn,
+    use SqlSyntax.Datatypes.{ShowParens, ShowAsKeyword, ShowColumnKeyword,
         Expression, Literal, 
         CaseStmt,
         Statement, 
-        AlterTableStmt, AlterTableClause, AlterColumnOptions, ShowSetData,
+        AlterTableStmt, AlterTableClause, AlterColumnOptions, SetData,
         CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         DropStmt, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
@@ -66,14 +66,14 @@ mod SqlSyntax.Pretty {
         case ShowParens.NoParens    => d
     }
 
-    def ppShowAs(x: ShowAs): Doc = match x {
-        case ShowAs.ShowAs  => text("AS")
-        case ShowAs.NoAs    => empty()
+    def ppShowAsKeyword(x: ShowAsKeyword): Doc = match x {
+        case ShowAsKeyword.ShowAs  => text("AS")
+        case ShowAsKeyword.NoAs    => empty()
     }
 
-    def ppShowColumn(x: ShowColumn): Doc = match x {
-        case ShowColumn.ShowColumn  => text("COLUMN")
-        case ShowColumn.NoColumn    => empty() 
+    def ppShowColumnKeyword(x: ShowColumnKeyword): Doc = match x {
+        case ShowColumnKeyword.ShowColumn  => text("COLUMN")
+        case ShowColumnKeyword.NoColumn    => empty() 
     }
 
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
@@ -123,16 +123,16 @@ mod SqlSyntax.Pretty {
         case AlterTableClause.Add(showColumn, optIfNotExists, name, sqltype, colConstraints) => {
             let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
             let columnConstraints = sep(List.map(ppColumnConstraint, colConstraints));
-            text("ADD") <^> ppShowColumn(showColumn) <^> ifNotExists <^> text(name) <<>> ppSqlType(sqltype) <^> columnConstraints
+            text("ADD") <^> ppShowColumnKeyword(showColumn) <^> ifNotExists <^> text(name) <<>> ppSqlType(sqltype) <^> columnConstraints
         }
         case AlterTableClause.Drop(showColumn, optIfExists, name)   => {
             let ifExists = someOrEmpty(optIfExists, ppIfExists);
-            text("DROP") <^> ppShowColumn(showColumn) <^> ifExists <^> text(name)
+            text("DROP") <^> ppShowColumnKeyword(showColumn) <^> ifExists <^> text(name)
         }
         case AlterTableClause.Alter(showColumn, name, alterOpts)     => 
-            text("ALTER") <^> ppShowColumn(showColumn) <^> text(name) <<>> ppAlterColumnOptions(alterOpts)
+            text("ALTER") <^> ppShowColumnKeyword(showColumn) <^> text(name) <<>> ppAlterColumnOptions(alterOpts)
         case AlterTableClause.Rename(showColumn, olds, news)        =>
-            text("RENAME") <^> ppShowColumn(showColumn) <^> text(olds) <<>> text("TO") <<>> text(news)
+            text("RENAME") <^> ppShowColumnKeyword(showColumn) <^> text(olds) <<>> text("TO") <<>> text(news)
         case AlterTableClause.RenameTo(name)                        => 
             text("RENAME TO") <<>> text(name)
     }
@@ -140,18 +140,18 @@ mod SqlSyntax.Pretty {
 
 
     def ppAlterColumnOptions(x: AlterColumnOptions): Doc = match x {
-        case AlterColumnOptions.SetData(setData, sqltype, optCollationName, optUsing) => {
+        case AlterColumnOptions.SetData(optSetData, sqltype, optCollationName, optUsing) => {
+            let setData = someOrEmpty(optSetData, ppSetData);
             let collate = someOrEmpty(optCollationName, s -> text("COLLATE") <<>> text(s));
             let usingExpr = someOrEmpty(optUsing, expr -> text("Using") <<>> ppExpression(expr));
-            ppShowSetData(setData) <^> text("TYPE") <<>> ppSqlType(sqltype) <^> collate <^> usingExpr
+            setData <^> text("TYPE") <<>> ppSqlType(sqltype) <^> collate <^> usingExpr
         }
         case AlterColumnOptions.SetDefault(expr)       => text("SET DEFAULT") <<>> ppExpression(expr)
         case AlterColumnOptions.DropDefault            => text("DROP DEFAULT")
     }
 
-    def ppShowSetData(x: ShowSetData): Doc = match x {
-        case ShowSetData.ShowSetData    => text("SET DATA")
-        case ShowSetData.DontShow       => empty()
+    def ppSetData(x: SetData): Doc = match x {
+        case SetData.SetData    => text("SET DATA")
     }
 
 
@@ -323,7 +323,7 @@ mod SqlSyntax.Pretty {
         case ReturnExpression.ReturnStar                                        => text("*")
         case ReturnExpression.ReturnExpression(expr, None)                      => ppExpression(expr)
         case ReturnExpression.ReturnExpression(expr, Some(showAs, exprAlias))   => 
-            ppExpression(expr) <^> ppShowAs(showAs) <^> text(exprAlias)
+            ppExpression(expr) <^> ppShowAsKeyword(showAs) <^> text(exprAlias)
     }
 
 
@@ -359,7 +359,7 @@ mod SqlSyntax.Pretty {
     def ppSelectExpr(x: SelectExpr): Doc = match x {
         case SelectExpr.SelectExpr(expr, None)                  => ppExpression(expr) 
         case SelectExpr.SelectExpr(expr, Some(showAs, nameAlias))  => 
-            ppExpression(expr) <^> ppShowAs(showAs) <^> text(nameAlias)
+            ppExpression(expr) <^> ppShowAsKeyword(showAs) <^> text(nameAlias)
         case SelectExpr.SelectStar(optTable, starOpts)          => {
             let tableName = someOrEmpty(optTable, s -> text(s) ++ dot());
             tableName <^> char('*') <<>> ppStarOptions(starOpts)
@@ -464,7 +464,7 @@ mod SqlSyntax.Pretty {
     def ppTableAlias(x: TableAlias): Doc = match x {
         case TableAlias.TableAlias(showAs, tableAlias, optCols) => {
             let columns = someOrEmpty(optCols, cols -> optionalTupled(List.map(text, cols)));
-            ppShowAs(showAs) <^> text(tableAlias) <^> columns
+            ppShowAsKeyword(showAs) <^> text(tableAlias) <^> columns
         }
     }
 
