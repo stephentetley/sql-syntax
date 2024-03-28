@@ -47,7 +47,7 @@ mod SqlSyntax.Pretty {
         QualifyClause, 
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
-        SqlType}
+        DataType}
 
 
     // TEMP - add to flix-pretty?
@@ -120,6 +120,7 @@ mod SqlSyntax.Pretty {
         case Statement.Attach(stmt)         => ppAttachStmt(stmt)
         case Statement.CreateTable(stmt)    => ppCreateTableStmt(stmt)
         case Statement.Drop(stmt)           => ppDropStmt(stmt)
+        case Statement.Detach(stmt)         => ppDetachStmt(stmt)
         case Statement.Insert(stmt)         => ppInsertStmt(stmt)
         case Statement.Select(stmt)         => ppSelectStmt(stmt)
     }
@@ -134,7 +135,7 @@ mod SqlSyntax.Pretty {
         case AlterTableClause.Add(showColumn, optIfNotExists, name, sqltype, colConstraints) => {
             let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
             let columnConstraints = sep(List.map(ppColumnConstraint, colConstraints));
-            text("ADD") <^> ppShowColumnKeyword(showColumn) <^> ifNotExists <^> text(name) <<>> ppSqlType(sqltype) <^> columnConstraints
+            text("ADD") <^> ppShowColumnKeyword(showColumn) <^> ifNotExists <^> text(name) <<>> ppDataType(sqltype) <^> columnConstraints
         }
         case AlterTableClause.Drop(showColumn, optIfExists, name)   => {
             let ifExists = someOrEmpty(optIfExists, ppIfExists);
@@ -155,7 +156,7 @@ mod SqlSyntax.Pretty {
             let setData = someOrEmpty(optSetData, ppSetData);
             let collate = someOrEmpty(optCollationName, s -> text("COLLATE") <<>> text(s));
             let usingExpr = someOrEmpty(optUsing, expr -> text("Using") <<>> ppExpression(expr));
-            setData <^> text("TYPE") <<>> ppSqlType(sqltype) <^> collate <^> usingExpr
+            setData <^> text("TYPE") <<>> ppDataType(sqltype) <^> collate <^> usingExpr
         }
         case AlterColumnOptions.SetDefault(expr)       => text("SET DEFAULT") <<>> ppExpression(expr)
         case AlterColumnOptions.DropDefault            => text("DROP DEFAULT")
@@ -226,14 +227,14 @@ mod SqlSyntax.Pretty {
     def ppColumnSpec(x: ColumnSpec): Doc = match x {
         case ColumnSpec.Column(ty, colConstraints)     => { 
             let columnConstraints = sep(List.map(ppColumnConstraint, colConstraints));
-            ppSqlType(ty) <^> columnConstraints
+            ppDataType(ty) <^> columnConstraints
         }
         case ColumnSpec.GeneratedColumn(col)    => ppGeneratedColumn(col)
     }
 
     def ppGeneratedColumn(x: GeneratedColumn): Doc = match x { 
         case GeneratedColumn.GeneratedColumn(optType, optGenAlways, expr, optVoS) => {
-            let sqltype = someOrEmpty(optType, ppSqlType);
+            let sqltype = someOrEmpty(optType, ppDataType);
             let generatedAlways = someOrEmpty(optGenAlways, ppGeneratedAlways);
             let virtualOrStored = someOrEmpty(optVoS, ppVirtualOrStored);
             sqltype <^> generatedAlways <^> text("AS") <<>> parens(ppExpression(expr)) <^> virtualOrStored
@@ -679,9 +680,13 @@ mod SqlSyntax.Pretty {
     }
 
 
-    pub def ppSqlType(x: SqlType): Doc = match x {
-        case SqlType.Varchar => text("VARCHAR")
-        case SqlType.Integer => text("INTEGER")
+    pub def ppDataType(x: DataType): Doc = match x {
+        case DataType.Bit       => text("BIT")
+        case DataType.Blob      => text("BLOB")
+        case DataType.Boolean   => text("BOOLEAN")
+        case DataType.Date      => text("DATE")
+        case DataType.Integer   => text("INTEGER")
+        case DataType.Varchar   => text("VARCHAR")
     }
 
 

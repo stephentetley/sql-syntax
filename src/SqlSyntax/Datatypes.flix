@@ -66,6 +66,7 @@ mod SqlSyntax.Datatypes {
         case AlterView(AlterViewStmt)
         case Attach(AttachStmt)
         case CreateTable(CreateTableStmt)
+        case Detach(DetachStmt)
         case Drop(DropStmt)
         case Insert(InsertStmt)
         case Select(SelectStmt)
@@ -76,7 +77,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum AlterTableClause with Eq, ToString {
-        case Add(ShowColumnKeyword, Option[IfNotExists], String, SqlType, List[ColumnConstraint])
+        case Add(ShowColumnKeyword, Option[IfNotExists], String, DataType, List[ColumnConstraint])
         case Drop(ShowColumnKeyword, Option[IfExists], String)
         case Alter(ShowColumnKeyword, String, AlterColumnOptions)
         case Rename(ShowColumnKeyword, String, String)
@@ -84,7 +85,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum AlterColumnOptions with Eq, ToString {
-        case SetData(Option[SetData], SqlType, Option[String], Option[Expression])
+        case SetData(Option[SetData], DataType, Option[String], Option[Expression])
         case SetDefault(Expression)
         case DropDefault
     }
@@ -139,12 +140,12 @@ mod SqlSyntax.Datatypes {
 
 
     pub enum ColumnSpec with Eq, ToString {
-        case Column(SqlType, List[ColumnConstraint])
+        case Column(DataType, List[ColumnConstraint])
         case GeneratedColumn(GeneratedColumn)
     }
 
     pub enum GeneratedColumn with Eq, ToString {
-        case GeneratedColumn(Option[SqlType], Option[GeneratedAlways], Expression, Option[VirtualOrStored])
+        case GeneratedColumn(Option[DataType], Option[GeneratedAlways], Expression, Option[VirtualOrStored])
     }
 
     pub enum GeneratedAlways with Eq, ToString {
@@ -455,9 +456,13 @@ mod SqlSyntax.Datatypes {
         case LimitClause(Expression, Option[Expression])
     }
 
-    pub enum SqlType with Eq, ToString {
-        case Varchar
+    pub enum DataType with Eq, ToString {
+        case Bit
+        case Blob
+        case Boolean
+        case Date
         case Integer
+        case Varchar
     }
 
 

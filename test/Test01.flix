@@ -16,7 +16,7 @@
 
 mod Test01 {
 
-    use SqlSyntax.Datatypes.{SqlType, ColumnConstraint, TableConstraint, DropQualifier, 
+    use SqlSyntax.Datatypes.{DataType, ColumnConstraint, TableConstraint, DropQualifier, 
         CascadeOrRestrict, InsertQualifier, InsertColumnQualifier, InsertValuesClause, 
         DoUpdateOrDoNothing, OrReplace, Temporary, IfNotExists, IfExists, 
         ReturnExpression}
@@ -36,15 +36,15 @@ mod Test01 {
 
     @test
     def test01(): Unit \ IO = 
-        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppSqlType(SqlType.Varchar)))
+        println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppDataType(DataType.Varchar)))
 
 
     @test
     def test02(): Unit \ IO = 
         let src = CreateTableStmt(Some(OrReplace.OrReplace), Some(Temporary.Temp), 
                         Some(IfNotExists.IfNotExists), UnqualifiedName("edge"), 
-                        List#{("from_edge", Column(SqlType.Varchar, List#{ColumnConstraint.AllowNull(false)})), 
-                                ("to_edge", Column(SqlType.Varchar, List#{ColumnConstraint.AllowNull(false)}))}, 
+                        List#{("from_edge", Column(DataType.Varchar, List#{ColumnConstraint.AllowNull(false)})), 
+                                ("to_edge", Column(DataType.Varchar, List#{ColumnConstraint.AllowNull(false)}))}, 
                         List#{TableConstraint.PrimaryKey(List#{"from_edge", "to_edge"})});
         println(Text.PrettyPrint.render(100, SqlSyntax.Pretty.ppCreateTableStmt(src)))
 
