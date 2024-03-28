@@ -32,6 +32,11 @@ mod SqlSyntax.Datatypes {
         case NoColumn
     }
 
+    pub enum ShowDatabaseKeyword with Eq, ToString {
+        case ShowDatabase
+        case NoDatabase
+    }
+
     pub enum QualifiedName with Eq, ToString {
         case QualifiedName(String, String)
         case UnqualifiedName(String)
@@ -58,6 +63,8 @@ mod SqlSyntax.Datatypes {
     // Columns and primary keys
     pub enum Statement with Eq, ToString {
         case AlterTable(AlterTableStmt)
+        case AlterView(AlterViewStmt)
+        case Attach(AttachStmt)
         case CreateTable(CreateTableStmt)
         case Drop(DropStmt)
         case Insert(InsertStmt)
@@ -85,6 +92,28 @@ mod SqlSyntax.Datatypes {
 
     pub enum SetData with Eq, ToString {
         case SetData
+    }
+
+
+    pub enum AlterViewStmt with Eq, ToString {
+        case AlterViewStmt(QualifiedName, AlterViewClause)
+    }
+
+    pub enum AlterViewClause with Eq, ToString {
+        case RenameTo(String)
+    }
+
+    pub enum AttachStmt with Eq, ToString {
+        case AttachStmt(ShowDatabaseKeyword, Option[IfNotExists], String, Option[String], Option[List[AttachOption]])
+    }
+
+    pub enum AttachOption with Eq, ToString {
+        case ReadOnly(Option[Bool])
+        case AttachType(AttachType)
+    }
+
+    pub enum AttachType with Eq, ToString {
+        case Sqlite
     }
 
     pub enum CreateTableStmt with Eq, ToString {

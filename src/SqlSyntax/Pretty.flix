@@ -22,11 +22,13 @@ mod SqlSyntax.Pretty {
         dot, char, int32, squotes, conditionalParens}
 
 
-    use SqlSyntax.Datatypes.{ShowParens, ShowAsKeyword, ShowColumnKeyword,
+    use SqlSyntax.Datatypes.{ShowParens, ShowAsKeyword, ShowColumnKeyword, ShowDatabaseKeyword,
         Expression, Literal, 
         CaseStmt,
         Statement, 
         AlterTableStmt, AlterTableClause, AlterColumnOptions, SetData,
+        AlterViewStmt, AlterViewClause,
+        AttachStmt, AttachOption, AttachType,
         CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         DropStmt, 
         QualifiedName, DropQualifier, CascadeOrRestrict, 
@@ -76,6 +78,12 @@ mod SqlSyntax.Pretty {
         case ShowColumnKeyword.NoColumn    => empty() 
     }
 
+
+    def ppShowDatabaseKeyword(x: ShowDatabaseKeyword): Doc = match x {
+        case ShowDatabaseKeyword.ShowDatabase   => text("DATABASE")
+        case ShowDatabaseKeyword.NoDatabase     => empty() 
+    }
+
     pub def ppQualifiedName(x: QualifiedName): Doc = match x {
         case QualifiedName.QualifiedName(scm, name) => text(scm ++ "." ++ name)
         case QualifiedName.UnqualifiedName(name)    => text(name)
@@ -107,6 +115,8 @@ mod SqlSyntax.Pretty {
 
     pub def ppStatement(x: Statement): Doc = match x {
         case Statement.AlterTable(stmt)     => ppAlterTableStmt(stmt)
+        case Statement.AlterView(stmt)      => ppAlterViewStmt(stmt)
+        case Statement.Attach(stmt)         => ppAttachStmt(stmt)
         case Statement.CreateTable(stmt)    => ppCreateTableStmt(stmt)
         case Statement.Drop(stmt)           => ppDropStmt(stmt)
         case Statement.Insert(stmt)         => ppInsertStmt(stmt)
@@ -154,6 +164,35 @@ mod SqlSyntax.Pretty {
         case SetData.SetData    => text("SET DATA")
     }
 
+    pub def ppAlterViewStmt(x: AlterViewStmt): Doc= match x {
+        case AlterViewStmt.AlterViewStmt(qname, alterClause) => 
+            text("ALTER VIEW") <<>> ppQualifiedName(qname) <<>> ppAlterViewClause(alterClause)
+    }
+
+    def ppAlterViewClause(x: AlterViewClause): Doc = match x {
+        case AlterViewClause.RenameTo(name) => text("RENAME TO") <<>> text(name)
+    }
+
+
+    pub def ppAttachStmt(x: AttachStmt): Doc = match x {
+        case AttachStmt.AttachStmt(showDatabase, optIfNotExists, path, optDbAlias, optOptions) => {
+            let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
+            let dbAlias = someOrEmpty(optDbAlias, s -> text("ALIAS") <<>> text(s));
+            let attachOptions = someOrEmpty(optOptions, opts -> optionalTupled(List.map(ppAttachOption , opts)));
+            text("ATTACH") <^> ppShowDatabaseKeyword(showDatabase) <^> ifNotExists 
+                <^> text(path) <^> dbAlias <^> attachOptions
+        }
+    }
+
+    def ppAttachOption(x: AttachOption): Doc = match x {
+        case AttachOption.ReadOnly(None)            => text("READ_ONLY")
+        case AttachOption.ReadOnly(Some(b))         => text("READ_ONLY") <<>> if (b) text("true") else text("false")
+        case AttachOption.AttachType(attachType)    => text("TYPE") <<>> ppAttachType(attachType)
+    }
+
+    def ppAttachType(x: AttachType): Doc = match x {
+        case AttachType.Sqlite => text("sqlite")
+    }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
         case CreateTableStmt.CreateTableStmt(optReplace, tempB, optIfNotExists, qname, cols, tblConstrs) => 
