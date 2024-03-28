@@ -40,28 +40,6 @@ mod SqlSyntax.Pretty {
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
         SqlType}
-    use SqlSyntax.Datatypes.CreateTableStmt.{CreateTableStmt}
-    use SqlSyntax.Datatypes.DropStmt.{DropStmt}
-    use SqlSyntax.Datatypes.InsertStmt.{InsertStmt}
-    use SqlSyntax.Datatypes.ValuesClause.{ValuesClause}
-    use SqlSyntax.Datatypes.ReturningClause.{ReturningClause}
-    use SqlSyntax.Datatypes.OnConflictClause.{OnConflictClause}
-    use SqlSyntax.Datatypes.SelectStmt.{SelectStmt}
-    use SqlSyntax.Datatypes.SelectClause.{SelectClause}
-    use SqlSyntax.Datatypes.DistinctClause.{Distinct, All}
-    use SqlSyntax.Datatypes.StarOptions.{StarOptions}
-    use SqlSyntax.Datatypes.FromClause.{FromClause}
-    use SqlSyntax.Datatypes.JoinClause.{JoinClause}
-    use SqlSyntax.Datatypes.OuterJoin.{OuterJoin}
-    use SqlSyntax.Datatypes.TableAlias.{TableAlias}
-    use SqlSyntax.Datatypes.WhereClause.{WhereClause}
-    use SqlSyntax.Datatypes.HavingClause.{HavingClause}
-    use SqlSyntax.Datatypes.WindowClause.{WindowClause}
-    use SqlSyntax.Datatypes.WindowDefinition.{WindowDefinition}
-    use SqlSyntax.Datatypes.PartitionByClause.{PartitionByClause}
-    use SqlSyntax.Datatypes.FrameSpec.{FrameSpec}
-    use SqlSyntax.Datatypes.QualifyClause.{QualifyClause}
-    use SqlSyntax.Datatypes.LimitClause.{LimitClause}
 
 
     // TEMP - add to flix-pretty?
@@ -100,7 +78,7 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
-        case CreateTableStmt(orRepB, tempB, notExistsB, qname, cols, tblConstrs) => 
+        case CreateTableStmt.CreateTableStmt(orRepB, tempB, notExistsB, qname, cols, tblConstrs) => 
             let orReplace = docOrEmpty(orRepB, text("OR REPLACE"));
             let temporary = docOrEmpty(tempB, text("TEMPORARY"));
             let ifNotExists = docOrEmpty(notExistsB, text("IF NOT EXISTS"));
@@ -159,7 +137,7 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppDropStmt(x: DropStmt): Doc = match x {
-        case DropStmt(tyqual, ifExistsB, qname, optCascadeRestrict) => 
+        case DropStmt.DropStmt(tyqual, ifExistsB, qname, optCascadeRestrict) => 
             let ifExists = docOrEmpty(ifExistsB, text("IF EXISTS"));
             let cascadeRestrict = someOrEmpty(optCascadeRestrict, ppCascadeOrRestrict);
             text("DROP") <<>> ppDropQualifier(tyqual) <^> ifExists <<>> ppQualifiedName(qname) <^> cascadeRestrict
@@ -182,7 +160,7 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppInsertStmt(x:  InsertStmt): Doc = match x {
-        case InsertStmt(optInsQual, qname, optAsName, cols, optColQual, valClause, ocClause, optRetClause) => 
+        case InsertStmt.InsertStmt(optInsQual, qname, optAsName, cols, optColQual, valClause, ocClause, optRetClause) => 
             let insQual = someOrEmpty(optInsQual, ppInsertQualifier);
             let asName = someOrEmpty(optAsName, name -> text("AS") <<>> ppQualifiedName(name));
             let colsD = optionalTupled(List.map(text, cols));
@@ -216,14 +194,14 @@ mod SqlSyntax.Pretty {
     }
 
     def ppValuesClause(x: ValuesClause): Doc = match x {
-        case ValuesClause(xss)     => {
+        case ValuesClause.ValuesClause(xss)     => {
             let ppValuesList = xs -> optionalTupled(List.map(ppExpression, xs));
             text("VALUES") <<>> commaSpaceSep(List.map(ppValuesList, xss))
         }
     }
 
     def ppOnConflictClause(x: OnConflictClause): Doc = match x {
-        case OnConflictClause(cols, optWhereExpr, dudn) => {
+        case OnConflictClause.OnConflictClause(cols, optWhereExpr, dudn) => {
             let columns = optionalTupled(List.map(text, cols));
             let whereExpr = someOrEmpty(optWhereExpr, expr -> text("WHERE") <<>> ppExpression(expr));
             text("ON CONFLICT") <^> columns <^> whereExpr <<>> ppDoUpdateOrDoNothing(dudn)
@@ -241,7 +219,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppInsertReturningClause(x: ReturningClause): Doc = match x {
-        case ReturningClause(starB, retExprs) => 
+        case ReturningClause.ReturningClause(starB, retExprs) => 
             let star = docOrEmpty(starB, text("*"));
             text("RETURNING") <<>> commaSpaceSep(star :: List.map(ppReturnExpression, retExprs))
     }
@@ -254,7 +232,7 @@ mod SqlSyntax.Pretty {
 
 
     pub def ppSelectStmt(x: SelectStmt): Doc = match x {
-        case SelectStmt(selClause, fromClause, optWhere, optGroupBy, optHaving, optWindow, optQualify, optOrderBy, optLimit) => {
+        case SelectStmt.SelectStmt(selClause, fromClause, optWhere, optGroupBy, optHaving, optWindow, optQualify, optOrderBy, optLimit) => {
             ppSelectClause(selClause) 
                 <<>> ppFromClause(fromClause) 
                 <^> someOrEmpty(optWhere, ppWhereClause)
@@ -268,7 +246,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppSelectClause(x: SelectClause): Doc = match x {
-        case SelectClause(optDistinct, sels) => {
+        case SelectClause.SelectClause(optDistinct, sels) => {
             let distinct = someOrEmpty(optDistinct, ppDistinctClause);
             let selectExprs = commaSpaceSep(List.map(ppSelectExpr, sels));
             text("SELECT") <^> distinct <<>> selectExprs
@@ -276,9 +254,9 @@ mod SqlSyntax.Pretty {
     }
 
     def ppDistinctClause(x: DistinctClause): Doc = match x {
-        case Distinct(None)         => text("DISTINCT")
-        case Distinct(Some(exprs))  => text("DISTINCT") <<>> text("ON") <<>> tupled(List.map(ppExpression, exprs))
-        case All                    => text("ALL")
+        case DistinctClause.Distinct(None)         => text("DISTINCT")
+        case DistinctClause.Distinct(Some(exprs))  => text("DISTINCT") <<>> text("ON") <<>> tupled(List.map(ppExpression, exprs))
+        case DistinctClause.All                    => text("ALL")
     }
 
     def ppSelectExpr(x: SelectExpr): Doc = match x {
@@ -320,7 +298,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppFromClause(x: FromClause): Doc = match x {
-        case FromClause(exprs) => { 
+        case FromClause.FromClause(exprs) => { 
             let exprList = commaSpaceSep(List.map(ppFromExpressionOrJoin, exprs));
             text("FROM") <<>> exprList
         }
@@ -346,7 +324,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppJoinClause(x: JoinClause): Doc = match x { 
-        case JoinClause(tableA, optJoinDes, tableB, optJoinCond) => {
+        case JoinClause.JoinClause(tableA, optJoinDes, tableB, optJoinCond) => {
             let designator = someOrEmpty(optJoinDes, ppJoinDesignation);
             let joinCondition = someOrEmpty(optJoinCond, ppJoinCondition);
             ppTableOrSubquery(tableA) <^> designator <<>> text("JOIN") <<>> ppTableOrSubquery(tableB) <^> joinCondition
@@ -383,14 +361,15 @@ mod SqlSyntax.Pretty {
     }
 
     def ppOuterJoin(x: OuterJoin): Doc = match x { 
-        case OuterJoin => text("OUTER")
+        case OuterJoin.Outer => text("OUTER")
     }
 
     def ppTableAlias(x: TableAlias): Doc = match x {
-        case TableAlias(asB, tableAlias, optCols) => 
-        let asKwd = docOrEmpty(asB, text("AS"));
-        let columns = someOrEmpty(optCols, cols -> optionalTupled(List.map(text, cols)));
-        asKwd <^> text(tableAlias) <^> columns
+        case TableAlias.TableAlias(asB, tableAlias, optCols) => {
+            let asKwd = docOrEmpty(asB, text("AS"));
+            let columns = someOrEmpty(optCols, cols -> optionalTupled(List.map(text, cols)));
+            asKwd <^> text(tableAlias) <^> columns
+        }
     }
 
     def ppTableSample(x: TableSample): Doc = match x { 
@@ -422,7 +401,7 @@ mod SqlSyntax.Pretty {
 
 
     def ppWhereClause(x: WhereClause): Doc = match x {
-        case WhereClause(expr) => text("WHERE") <<>> ppExpression(expr)
+        case WhereClause.WhereClause(expr) => text("WHERE") <<>> ppExpression(expr)
     }
 
 
@@ -443,18 +422,18 @@ mod SqlSyntax.Pretty {
     }
 
     def ppHavingClause(x: HavingClause): Doc = match x {
-        case HavingClause(expr) => text("HAVING") <<>> ppExpression(expr)
+        case HavingClause.HavingClause(expr) => text("HAVING") <<>> ppExpression(expr)
     }
 
     def ppWindowClause(x: WindowClause): Doc = match x {
-        case WindowClause(winDecls) => {
+        case WindowClause.WindowClause(winDecls) => {
             let makeWindowDecl = match (name, defn) -> text(name) <<>> text("AS") <<>> ppWindowDefinition(defn);
             text("WINDOW") <<>> commaSpaceSep(List.map(makeWindowDecl, winDecls))
         }
     }
 
     def ppWindowDefinition(x: WindowDefinition): Doc = match x {
-        case WindowDefinition(optBaseName, optPartitionBy, optOrderBy, frameSpec) => {
+        case WindowDefinition.WindowDefinition(optBaseName, optPartitionBy, optOrderBy, frameSpec) => {
             let baseName = someOrEmpty(optBaseName, text);
             let partitionBy = someOrEmpty(optPartitionBy, ppPartitionByClause);
             let orderBy = someOrEmpty(optOrderBy, ppOrderByClause);
@@ -464,11 +443,11 @@ mod SqlSyntax.Pretty {
     }
 
     def ppPartitionByClause(x: PartitionByClause): Doc = match x {
-        case PartitionByClause(exprs) => text("PARTITION BY") <<>> commaSpaceSep(List.map(ppExpression, exprs))
+        case PartitionByClause.PartitionByClause(exprs) => text("PARTITION BY") <<>> commaSpaceSep(List.map(ppExpression, exprs))
     }
 
     def ppFrameSpec(x: FrameSpec): Doc = match x {
-        case FrameSpec(ror, frameBody, optExclude) => {
+        case FrameSpec.FrameSpec(ror, frameBody, optExclude) => {
             let exclude = someOrEmpty(optExclude, ppWindowExclude);
             ppRangeOrRows(ror) <<>> ppFrameBody(frameBody) <^> exclude
         }
@@ -510,7 +489,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppQualifyClause(x: QualifyClause): Doc = match x {
-        case QualifyClause(expr) => text("QUALIFY") <<>> ppExpression(expr)
+        case QualifyClause.QualifyClause(expr) => text("QUALIFY") <<>> ppExpression(expr)
     }
 
     def ppOrderByClause(x: OrderByClause): Doc = match x {
@@ -541,7 +520,7 @@ mod SqlSyntax.Pretty {
     }
 
     def ppLimitClause(x: LimitClause): Doc = match x {
-        case LimitClause(expr, optOffset) => {
+        case LimitClause.LimitClause(expr, optOffset) => {
             let offset = someOrEmpty(optOffset, expr1 -> text("OFFSET") <<>> ppExpression(expr1));
             text("LIMIT") <<>> ppExpression(expr) <^> offset
         }

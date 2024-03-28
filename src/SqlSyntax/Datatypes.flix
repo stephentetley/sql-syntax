@@ -27,16 +27,17 @@ mod SqlSyntax.Datatypes {
     pub type alias AsSymbolB = Bool
     pub type alias ParensB = Bool
 
+    pub enum QualifiedName with Eq, ToString {
+        case QualifiedName(String, String)
+        case UnqualifiedName(String)
+    }
+
 
     pub enum Expression with Eq, ToString {
         case Identifier(String)
         case Literal(Literal)
     }
 
-    pub enum QualifiedName with Eq, ToString {
-        case QualifiedName(String, String)
-        case UnqualifiedName(String)
-    }
 
     pub enum Literal with Eq, ToString {
         case Integer(Int32) // TODO
@@ -234,7 +235,7 @@ mod SqlSyntax.Datatypes {
     }
 
     pub enum OuterJoin with Eq, ToString {
-        case OuterJoin
+        case Outer
     }
 
     pub enum TableAlias with Eq, ToString {
