@@ -49,7 +49,8 @@ mod SqlSyntax.Pretty {
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
         UseStmt,
-        DataType}
+        DataType, TimestampPrecision
+        }
 
 
     // TEMP - add to flix-pretty?
@@ -703,10 +704,22 @@ mod SqlSyntax.Pretty {
         case DataType.Blob              => text("BLOB")
         case DataType.Boolean           => text("BOOLEAN")
         case DataType.Date              => text("DATE")
+        case DataType.Decimal(w,sc)     => text("DECIMAL") ++ tupled(List#{int32(w), int32(sc)})
         case DataType.Integer           => text("INTEGER")
+        case DataType.Interval          => text("INTERVAL")
         case DataType.List(ty)          => ppDataType(ty) ++ text("[]")
+        case DataType.Map(kty, vty)     => text("MAP") ++ tupled(List#{ppDataType(kty), ppDataType(vty)})
+        case DataType.Time              => text("TIME")
+        case DataType.TimeTz            => text("TIMETZ")
+        case DataType.Timestamp(prec)   => timestampPrecAsDataType(prec)
         case DataType.Varchar           => text("VARCHAR")
     }
 
-
+    def timestampPrecAsDataType(x: TimestampPrecision): Doc = match x {
+        case TimestampPrecision.Nanosecond  => text("TIMESTAMP_NS")
+        case TimestampPrecision.Microsecond => text("TIMESTAMP")
+        case TimestampPrecision.Millisecond => text("TIMESTAMP_MS")
+        case TimestampPrecision.Second      => text("TIMESTAMP_S")
+        case TimestampPrecision.Timezone    => text("TIMESTAMPTZ")
+    }
 }

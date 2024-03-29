@@ -472,11 +472,24 @@ mod SqlSyntax.Datatypes {
         case Blob
         case Boolean
         case Date
+        case Decimal(Int32, Int32)
         case Integer
+        case Interval
         case List(DataType)
+        case Map(DataType, DataType)
+        case Time
+        case TimeTz
+        case Timestamp(TimestampPrecision)
         case Varchar
     }
 
+    pub enum TimestampPrecision with Eq, ToString {
+        case Nanosecond
+        case Microsecond
+        case Millisecond
+        case Second
+        case Timezone
+    }
 
 
 }
