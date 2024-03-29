@@ -18,7 +18,7 @@ mod SqlSyntax.Pretty {
 
     use Either.{Left, Right}
     use Text.PrettyPrint.Doc
-    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
+    use Text.PrettyPrint.{<<>>, <^>, empty, text, parens, brackets, sep, intersperse, equals, comma, space, tupled, optionalTupled, 
         dot, char, int32, squotes, conditionalParens}
 
 
@@ -29,6 +29,7 @@ mod SqlSyntax.Pretty {
         AlterTableStmt, AlterTableClause, AlterColumnOptions, SetData,
         AlterViewStmt, AlterViewClause,
         AttachStmt, AttachOption, AttachType,
+        CreateSchemaStmt, 
         CreateTableStmt, OrReplace, Temporary, IfNotExists, IfExists, ColumnSpec, GeneratedColumn, GeneratedAlways, VirtualOrStored, ColumnConstraint, TableConstraint, 
         DropStmt, 
         DetachStmt, DetachQualifier,
@@ -47,6 +48,7 @@ mod SqlSyntax.Pretty {
         QualifyClause, 
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
+        UseStmt,
         DataType}
 
 
@@ -118,11 +120,13 @@ mod SqlSyntax.Pretty {
         case Statement.AlterTable(stmt)     => ppAlterTableStmt(stmt)
         case Statement.AlterView(stmt)      => ppAlterViewStmt(stmt)
         case Statement.Attach(stmt)         => ppAttachStmt(stmt)
+        case Statement.CreateSchema(stmt)   => ppCreateSchemaStmt(stmt)
         case Statement.CreateTable(stmt)    => ppCreateTableStmt(stmt)
         case Statement.Drop(stmt)           => ppDropStmt(stmt)
         case Statement.Detach(stmt)         => ppDetachStmt(stmt)
         case Statement.Insert(stmt)         => ppInsertStmt(stmt)
         case Statement.Select(stmt)         => ppSelectStmt(stmt)
+        case Statement.Use(stmt)            => ppUseStmt(stmt)
     }
 
 
@@ -196,8 +200,15 @@ mod SqlSyntax.Pretty {
         case AttachType.Sqlite => text("sqlite")
     }
 
+    pub def ppCreateSchemaStmt(x: CreateSchemaStmt): Doc = match x {
+        case CreateSchemaStmt.CreateSchemaStmt(optIfNotExists, name) => {
+            let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
+            text("CREATE SCHEMA") <^> ifNotExists <^> text(name)
+        }
+    }
+
     pub def ppCreateTableStmt(x: CreateTableStmt): Doc = match x {
-        case CreateTableStmt.CreateTableStmt(optReplace, tempB, optIfNotExists, qname, cols, tblConstrs) => 
+        case CreateTableStmt.CreateTableStmt(optReplace, tempB, optIfNotExists, qname, cols, tblConstrs) => {
             let orReplace = someOrEmpty(optReplace, ppOrReplace);
             let temporary = someOrEmpty(tempB, ppTemporary);
             let ifNotExists = someOrEmpty(optIfNotExists, ppIfNotExists);
@@ -205,6 +216,7 @@ mod SqlSyntax.Pretty {
             let tblConstrsD = sep(List.map(ppTableConstraint, tblConstrs));
             text("CREATE") <^> orReplace <^> temporary <<>> text("TABLE") <^> ifNotExists <<>> ppQualifiedName(qname) 
                 <<>> optionalTupled(colsDs ++ List#{tblConstrsD})
+        }
     }
 
     def ppOrReplace(x: OrReplace): Doc = match x {
@@ -679,14 +691,21 @@ mod SqlSyntax.Pretty {
         }
     }
 
+    pub def ppUseStmt(x: UseStmt): Doc= match x {
+        case UseStmt.UseStmt(qname) => 
+            text("USE") <<>> ppQualifiedName(qname)
+    }
 
+    // NOTE - we might need various printers for types...
     pub def ppDataType(x: DataType): Doc = match x {
-        case DataType.Bit       => text("BIT")
-        case DataType.Blob      => text("BLOB")
-        case DataType.Boolean   => text("BOOLEAN")
-        case DataType.Date      => text("DATE")
-        case DataType.Integer   => text("INTEGER")
-        case DataType.Varchar   => text("VARCHAR")
+        case DataType.Array(ty, sz)     => ppDataType(ty) ++ brackets(int32(sz))
+        case DataType.Bit               => text("BIT")
+        case DataType.Blob              => text("BLOB")
+        case DataType.Boolean           => text("BOOLEAN")
+        case DataType.Date              => text("DATE")
+        case DataType.Integer           => text("INTEGER")
+        case DataType.List(ty)          => ppDataType(ty) ++ text("[]")
+        case DataType.Varchar           => text("VARCHAR")
     }
 
 

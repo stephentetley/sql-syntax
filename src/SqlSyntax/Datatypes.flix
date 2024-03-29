@@ -65,11 +65,13 @@ mod SqlSyntax.Datatypes {
         case AlterTable(AlterTableStmt)
         case AlterView(AlterViewStmt)
         case Attach(AttachStmt)
+        case CreateSchema(CreateSchemaStmt)
         case CreateTable(CreateTableStmt)
         case Detach(DetachStmt)
         case Drop(DropStmt)
         case Insert(InsertStmt)
         case Select(SelectStmt)
+        case Use(UseStmt)
     }
 
     pub enum AlterTableStmt with Eq, ToString {
@@ -115,6 +117,10 @@ mod SqlSyntax.Datatypes {
 
     pub enum AttachType with Eq, ToString {
         case Sqlite
+    }
+
+    pub enum CreateSchemaStmt with Eq, ToString {
+        case CreateSchemaStmt(Option[IfNotExists], String)
     }
 
     pub enum CreateTableStmt with Eq, ToString {
@@ -456,12 +462,18 @@ mod SqlSyntax.Datatypes {
         case LimitClause(Expression, Option[Expression])
     }
 
+    pub enum UseStmt with Eq,ToString {
+        case UseStmt(QualifiedName)
+    }
+
     pub enum DataType with Eq, ToString {
+        case Array(DataType, Int32)
         case Bit
         case Blob
         case Boolean
         case Date
         case Integer
+        case List(DataType)
         case Varchar
     }
 
