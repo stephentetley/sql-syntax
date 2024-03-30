@@ -23,7 +23,7 @@ mod SqlSyntax.Pretty {
 
 
     use SqlSyntax.Datatypes.{ShowParens, ShowAsKeyword, ShowColumnKeyword, ShowDatabaseKeyword,
-        Expression, Literal, 
+        Expression, Literal, BinOp, Collation, 
         CaseStmt,
         Statement, 
         AlterTableStmt, AlterTableClause, AlterColumnOptions, SetData,
@@ -93,11 +93,15 @@ mod SqlSyntax.Pretty {
         case QualifiedName.UnqualifiedName(name)    => text(name)
     }
 
-
+    // TODO Binary will need precedence handling / parens...
     pub def ppExpression(x: Expression): Doc = match x {
-        case Expression.Identifier(s)   => text(s)
-        case Expression.Literal(lit)    => ppLiteral(lit)
-        case Expression.Case(stmt)      => ppCaseStmt(stmt)
+        case Expression.Identifier(s)           => text(s)
+        case Expression.Literal(lit)            => ppLiteral(lit)
+        case Expression.Binary(e1, op, e2)      => ppExpression(e1) <<>> ppBinOp(op) <<>> ppExpression(e2)
+        case Expression.Case(stmt)              => ppCaseStmt(stmt)
+        case Expression.Cast(expr, ty)          => text("CAST") ++ parens(ppExpression(expr) <<>> text("AS") <<>> ppDataType(ty))
+        case Expression.TryCast(expr, ty)       => text("TRY_CAST") ++ parens(ppExpression(expr) <<>> text("AS") <<>> ppDataType(ty))
+        case Expression.Collation(expr, coll)   => ppExpression(expr) <<>> text("COLLATE") <<>> ppCollation(coll)
     }
 
     pub def ppLiteral(x: Literal): Doc = match x {
@@ -105,7 +109,15 @@ mod SqlSyntax.Pretty {
         case Literal.Varchar(s) => squotes(text(s))
     }
 
-    
+    def ppBinOp(x: BinOp): Doc = match x {
+        case BinOp.LessThan             => char('<')
+        case BinOp.GreaterThan          => char('>')
+        case BinOp.LessThanEquals       => text("<=")
+        case BinOp.GreaterThanEquals    => text(">=")
+        case BinOp.Equals               => char('=')
+        case BinOp.NotEquals            => text("!=")
+    }
+
     pub def ppCaseStmt(x: CaseStmt): Doc = match x {
         case CaseStmt.CaseStmt(optSwitch, caseList, optElse) => {
             let switchOn = someOrEmpty(optSwitch, ppExpression);
@@ -114,8 +126,15 @@ mod SqlSyntax.Pretty {
             let caseElse = someOrEmpty(optElse, expr -> text("ELSE") <<>> ppExpression(expr));
             text("CASE") <^> switchOn <<>> sep(cases) <^> caseElse <<>> text("END")
         }
-
     }
+
+    def ppCollation(x: Collation): Doc = match x {
+        case Collation.NoCase       => text("NOCASE")
+        case Collation.NoAccent     => text("NOCASE")
+        case Collation.NFC          => text("NOCASE")
+        case Collation.Extension(s) => text(s)
+    }
+
 
     pub def ppStatement(x: Statement): Doc = match x {
         case Statement.AlterTable(stmt)     => ppAlterTableStmt(stmt)

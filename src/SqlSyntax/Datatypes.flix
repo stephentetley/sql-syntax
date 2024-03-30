@@ -46,8 +46,13 @@ mod SqlSyntax.Datatypes {
     pub enum Expression with Eq, ToString {
         case Identifier(String)
         case Literal(Literal)
+        case Binary(Expression, BinOp, Expression)
         case Case(CaseStmt)
+        case Cast(Expression, DataType)
+        case TryCast(Expression, DataType)
+        case Collation(Expression, Collation)
     }
+
 
 
     pub enum Literal with Eq, ToString {
@@ -56,8 +61,25 @@ mod SqlSyntax.Datatypes {
     }
 
 
+    pub enum BinOp with Eq, ToString {
+        case LessThan
+        case GreaterThan
+        case LessThanEquals
+        case GreaterThanEquals
+        case Equals
+        case NotEquals
+    }
+
     pub enum CaseStmt with Eq, ToString {
         case CaseStmt(Option[Expression], List[(Expression, Expression)], Option[Expression])
+    }
+
+
+    pub enum Collation with Eq, ToString {
+        case NoCase
+        case NoAccent
+        case NFC
+        case Extension(String)
     }
 
     // Columns and primary keys
