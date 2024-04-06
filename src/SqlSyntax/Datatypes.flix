@@ -56,6 +56,7 @@ mod SqlSyntax.Datatypes {
 
 
     pub enum Literal with Eq, ToString {
+        case Null
         case Integer(Int32) // TODO
         case Varchar(String)
     }
@@ -494,15 +495,36 @@ mod SqlSyntax.Datatypes {
         case Blob
         case Boolean
         case Date
-        case Decimal(Int32, Int32)
-        case Integer
+        case FixedDecimal(Int32, Int32)
+        case FloatingPointDecimal(FloatingPointType)
+        case Integer(IntegerType)
         case Interval
         case List(DataType)
         case Map(DataType, DataType)
         case Time
         case TimeTz
         case Timestamp(TimestampPrecision)
+        case UUID
         case Varchar
+    }
+
+    pub enum IntegerType with Eq, ToString {
+        case TinyInt
+        case SmallInt
+        case Integer
+        case BigInt
+        case HugeInt
+        case UTinyInt
+        case USmallInt
+        case UInteger
+        case UBigInt
+        case UHugeInt
+    }
+
+
+    pub enum FloatingPointType with Eq, ToString {
+        case Real
+        case Double
     }
 
     pub enum TimestampPrecision with Eq, ToString {

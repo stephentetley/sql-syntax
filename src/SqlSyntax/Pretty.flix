@@ -49,7 +49,7 @@ mod SqlSyntax.Pretty {
         OrderByClause, OrderDesignation, SortOrder, NullsPosition,
         LimitClause, 
         UseStmt,
-        DataType, TimestampPrecision
+        DataType, IntegerType, FloatingPointType, TimestampPrecision
         }
 
 
@@ -105,6 +105,7 @@ mod SqlSyntax.Pretty {
     }
 
     pub def ppLiteral(x: Literal): Doc = match x {
+        case Literal.Null       => text("NULL")
         case Literal.Integer(i) => int32(i)
         case Literal.Varchar(s) => squotes(text(s))
     }
@@ -723,15 +724,36 @@ mod SqlSyntax.Pretty {
         case DataType.Blob              => text("BLOB")
         case DataType.Boolean           => text("BOOLEAN")
         case DataType.Date              => text("DATE")
-        case DataType.Decimal(w,sc)     => text("DECIMAL") ++ tupled(List#{int32(w), int32(sc)})
-        case DataType.Integer           => text("INTEGER")
+        case DataType.FixedDecimal(w,sc)    => text("DECIMAL") ++ tupled(List#{int32(w), int32(sc)})
+        case DataType.FloatingPointDecimal(tyFP)    => ppFloatingPointType(tyFP)
+        case DataType.Integer(tyInt)        => ppIntegerType(tyInt)
         case DataType.Interval          => text("INTERVAL")
         case DataType.List(ty)          => ppDataType(ty) ++ text("[]")
         case DataType.Map(kty, vty)     => text("MAP") ++ tupled(List#{ppDataType(kty), ppDataType(vty)})
         case DataType.Time              => text("TIME")
         case DataType.TimeTz            => text("TIMETZ")
         case DataType.Timestamp(prec)   => timestampPrecAsDataType(prec)
+        case DataType.UUID              => text("UUID")
         case DataType.Varchar           => text("VARCHAR")
+    }
+
+    def ppIntegerType(x: IntegerType): Doc = match x {
+        case IntegerType.TinyInt    => text("TINYINT")
+        case IntegerType.SmallInt   => text("SMALLINT")
+        case IntegerType.Integer    => text("INTEGER")
+        case IntegerType.BigInt     => text("BIGINT")
+        case IntegerType.HugeInt    => text("HUGEINT")
+        case IntegerType.UTinyInt   => text("UTINYINT")
+        case IntegerType.USmallInt  => text("USMALLINT")
+        case IntegerType.UInteger   => text("UINTEGER")
+        case IntegerType.UBigInt    => text("UBIGINT")
+        case IntegerType.UHugeInt   => text("UHUGEINT")
+    }
+
+
+    def ppFloatingPointType(x: FloatingPointType): Doc = match x {
+        case FloatingPointType.Real     => text("REAL")
+        case FloatingPointType.Double   => text("DOUBLE")
     }
 
     def timestampPrecAsDataType(x: TimestampPrecision): Doc = match x {
